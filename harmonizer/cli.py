@@ -217,6 +217,17 @@ def create_parser() -> argparse.ArgumentParser:
         """,
     )
 
+    config_group.add_argument(
+        "--log-level",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        default="INFO",
+        help="""
+        Set logging level (default: INFO).
+        DEBUG shows detailed diagnostic information.
+        Logs are written to ~/.harmonizer/logs/
+        """,
+    )
+
     return parser
 
 
@@ -515,6 +526,19 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser = create_parser()
     args = parser.parse_args(argv)
 
+    # Initialize logging early
+    from harmonizer.utils.logging_config import HarmonizerLogger
+
+    HarmonizerLogger.initialize(
+        log_level=args.log_level if hasattr(args, 'log_level') else "INFO",
+        enable_file_logging=True,
+        enable_console_logging=False,  # We handle console output separately
+    )
+
+    logger = HarmonizerLogger.get_logger(__name__)
+    logger.info(f"Environment Harmonizer started - Version {__version__}")
+    logger.debug(f"Arguments: {vars(args)}")
+
     try:
         # Validate arguments
         validate_arguments(args)
@@ -524,9 +548,11 @@ def main(argv: Optional[List[str]] = None) -> int:
             from harmonizer.utils.config import create_default_config_file
 
             create_default_config_file()
+            logger.info("Configuration file created successfully")
             return 0
 
         # Run scan
+        logger.info(f"Starting scan of: {args.project_path}")
         env_status = run_scan(args)
 
         # Display results
@@ -534,6 +560,7 @@ def main(argv: Optional[List[str]] = None) -> int:
 
         # Apply fixes if --fix flag is set
         if args.fix:
+            logger.info(f"Applying fixes (dry_run={args.dry_run})")
             fix_results = apply_fixes(env_status, args)
 
             # Display fix results
@@ -541,21 +568,26 @@ def main(argv: Optional[List[str]] = None) -> int:
 
         # Return exit code based on issues
         if env_status.has_errors():
+            logger.warning(f"Scan completed with errors")
             return 1  # Exit with error if errors found
 
+        logger.info("Scan completed successfully")
         return 0
 
     except ValueError as e:
+        logger.error(f"Argument validation error: {e}")
         print(f"Error: {e}", file=sys.stderr)
         return 2  # Argument validation error
 
     except KeyboardInterrupt:
+        logger.info("Interrupted by user")
         print("\nInterrupted by user", file=sys.stderr)
         return 130  # Standard exit code for SIGINT
 
     except Exception as e:
+        logger.error(f"Unexpected error: {e}", exc_info=True)
         print(f"Unexpected error: {e}", file=sys.stderr)
-        if args.verbose:
+        if hasattr(args, 'verbose') and args.verbose:
             import traceback
 
             traceback.print_exc()

@@ -34,6 +34,8 @@ from harmonizer.detectors.config_detector import (
 )
 from harmonizer.detectors.quirks_detector import detect_platform_quirks
 from harmonizer.utils.progress import ProgressReporter
+from harmonizer.utils.logging_config import HarmonizerLogger
+from harmonizer.utils.performance import get_global_monitor
 
 
 class ProjectScanner:
@@ -76,13 +78,19 @@ class ProjectScanner:
         self.project_path = Path(project_path).resolve()
         self.verbose = verbose
         self.progress = ProgressReporter(use_color=use_color, verbose=verbose)
+        self.logger = HarmonizerLogger.get_logger(__name__)
+        self.perf_monitor = get_global_monitor()
 
         # Validate project path
         if not self.project_path.exists():
+            self.logger.error(f"Project path does not exist: {project_path}")
             raise ValueError(f"Project path does not exist: {project_path}")
 
         if not self.project_path.is_dir():
+            self.logger.error(f"Project path is not a directory: {project_path}")
             raise ValueError(f"Project path is not a directory: {project_path}")
+
+        self.logger.info(f"ProjectScanner initialized for: {self.project_path}")
 
     def scan(self, checks: Optional[list] = None) -> EnvironmentStatus:
         """
@@ -160,13 +168,24 @@ class ProjectScanner:
         """
 
         self.progress.start_step("Detecting operating system")
+        self.perf_monitor.start_timer("scan_os")
+        self.logger.debug("Starting OS detection")
 
-        env_status.os_type = detect_os_type()
-        env_status.os_version = get_os_version()
+        try:
+            env_status.os_type = detect_os_type()
+            env_status.os_version = get_os_version()
 
-        self.progress.complete_step(f"OS: {env_status.os_type.value} ({env_status.os_version})")
-        self.progress.verbose(f"OS Type: {env_status.os_type.value}")
-        self.progress.verbose(f"OS Version: {env_status.os_version}")
+            self.logger.info(f"Detected OS: {env_status.os_type.value} - {env_status.os_version}")
+            self.progress.complete_step(f"OS: {env_status.os_type.value} ({env_status.os_version})")
+            self.progress.verbose(f"OS Type: {env_status.os_type.value}")
+            self.progress.verbose(f"OS Version: {env_status.os_version}")
+
+        except Exception as e:
+            self.logger.error(f"Error during OS detection: {e}", exc_info=True)
+            raise
+        finally:
+            duration = self.perf_monitor.stop_timer("scan_os")
+            self.logger.debug(f"OS detection completed in {duration:.3f}s" if duration else "OS detection timer not found")
 
     def _scan_python(self, env_status: EnvironmentStatus) -> None:
         """
