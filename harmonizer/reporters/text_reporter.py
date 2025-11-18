@@ -126,7 +126,9 @@ class TextReporter:
         separator = "=" * self.width
 
         lines.append(separator)
-        lines.append(self._colorize("ENVIRONMENT HARMONIZER - Diagnostic Report", "bold"))
+        lines.append(
+            self._colorize("ENVIRONMENT HARMONIZER - Diagnostic Report", "bold")
+        )
         lines.append(separator)
         lines.append("")
 
@@ -202,14 +204,20 @@ class TextReporter:
             lines.append(f"  Installed Packages: {len(env_status.installed_packages)}")
 
             if env_status.missing_packages:
-                lines.append(f"  Missing Packages: {self._colorize(str(len(env_status.missing_packages)), 'red')}")
+                lines.append(
+                    f"  Missing Packages: {self._colorize(str(len(env_status.missing_packages)), 'red')}"
+                )
                 # Show first few missing packages
                 for pkg in env_status.missing_packages[:5]:
                     lines.append(f"    {self._colorize('✗', 'red')} {pkg}")
                 if len(env_status.missing_packages) > 5:
-                    lines.append(f"    ... and {len(env_status.missing_packages) - 5} more")
+                    lines.append(
+                        f"    ... and {len(env_status.missing_packages) - 5} more"
+                    )
             else:
-                lines.append(f"  {self._colorize('✓', 'green')} All dependencies installed")
+                lines.append(
+                    f"  {self._colorize('✓', 'green')} All dependencies installed"
+                )
         else:
             lines.append(f"  {self._colorize('ℹ', 'blue')} No requirements file found")
 
@@ -245,11 +253,17 @@ class TextReporter:
 
         if not env_status.issues:
             lines.append(self._colorize("[NO ISSUES DETECTED]", "green", bold=True))
-            lines.append(f"  {self._colorize('✓', 'green')} Environment appears to be properly configured")
+            lines.append(
+                f"  {self._colorize('✓', 'green')} Environment appears to be properly configured"
+            )
             lines.append("")
             return lines
 
-        lines.append(self._colorize(f"[DETECTED ISSUES] ({len(env_status.issues)} total)", "bold"))
+        lines.append(
+            self._colorize(
+                f"[DETECTED ISSUES] ({len(env_status.issues)} total)", "bold"
+            )
+        )
         lines.append("")
 
         # Group issues by severity
@@ -329,11 +343,13 @@ class TextReporter:
         separator = "-" * self.width
 
         lines.append(separator)
-        lines.append(self._colorize(
-            f"[FIXABLE ISSUES] - {len(fixable_issues)} issue(s) can be automatically fixed",
-            "cyan",
-            bold=True
-        ))
+        lines.append(
+            self._colorize(
+                f"[FIXABLE ISSUES] - {len(fixable_issues)} issue(s) can be automatically fixed",
+                "cyan",
+                bold=True,
+            )
+        )
         lines.append("")
 
         # Group fixable issues by category for better organization
@@ -346,7 +362,9 @@ class TextReporter:
         # Display fixable issues by category
         for category, issues in sorted(by_category.items()):
             category_name = category.replace("_", " ").title()
-            lines.append(f"  {self._colorize('●', 'green')} {category_name} ({len(issues)} fix{'es' if len(issues) > 1 else ''}):")
+            lines.append(
+                f"  {self._colorize('●', 'green')} {category_name} ({len(issues)} fix{'es' if len(issues) > 1 else ''}):"
+            )
 
             for issue in issues:
                 # Show the issue message
@@ -360,19 +378,23 @@ class TextReporter:
 
                 # Show fix command if available
                 if issue.fix_command:
-                    lines.append(f"        Fix: {self._colorize(issue.fix_command, 'cyan')}")
+                    lines.append(
+                        f"        Fix: {self._colorize(issue.fix_command, 'cyan')}"
+                    )
 
             lines.append("")
 
         # Call to action
-        lines.append(self._colorize(
-            "  💡 TIP: Run with --fix to apply all automated fixes",
-            "cyan"
-        ))
-        lines.append(self._colorize(
-            "  💡 TIP: Run with --fix --dry-run to preview changes first",
-            "cyan"
-        ))
+        lines.append(
+            self._colorize(
+                "  💡 TIP: Run with --fix to apply all automated fixes", "cyan"
+            )
+        )
+        lines.append(
+            self._colorize(
+                "  💡 TIP: Run with --fix --dry-run to preview changes first", "cyan"
+            )
+        )
         lines.append("")
 
         return lines
@@ -392,12 +414,16 @@ class TextReporter:
             summary_parts = []
 
             if summary["errors"] > 0:
-                summary_parts.append(self._colorize(f"{summary['errors']} error(s)", "red"))
+                summary_parts.append(
+                    self._colorize(f"{summary['errors']} error(s)", "red")
+                )
             else:
                 summary_parts.append(f"{summary['errors']} error(s)")
 
             if summary["warnings"] > 0:
-                summary_parts.append(self._colorize(f"{summary['warnings']} warning(s)", "yellow"))
+                summary_parts.append(
+                    self._colorize(f"{summary['warnings']} warning(s)", "yellow")
+                )
             else:
                 summary_parts.append(f"{summary['warnings']} warning(s)")
 
@@ -413,12 +439,15 @@ class TextReporter:
             if fixable > 0:
                 lines.append(
                     self._colorize(
-                        f"Run with --fix to apply {fixable} automated fix(es)",
-                        "cyan"
+                        f"Run with --fix to apply {fixable} automated fix(es)", "cyan"
                     )
                 )
         else:
-            lines.append(self._colorize("✓ No issues detected - environment is healthy!", "green"))
+            lines.append(
+                self._colorize(
+                    "✓ No issues detected - environment is healthy!", "green"
+                )
+            )
 
         lines.append(separator)
 
@@ -458,9 +487,7 @@ class TextReporter:
 
 # Convenience function for quick report generation
 def generate_text_report(
-    env_status: EnvironmentStatus,
-    use_color: bool = True,
-    width: int = 80
+    env_status: EnvironmentStatus, use_color: bool = True, width: int = 80
 ) -> str:
     """
     Convenience function to generate a text report.
@@ -511,21 +538,21 @@ if __name__ == "__main__":
         "dependency",
         "2 required packages not installed",
         fixable=True,
-        fix_command="pip install -r requirements.txt"
+        fix_command="pip install -r requirements.txt",
     )
 
     status.add_issue(
         IssueSeverity.WARNING,
         "wsl_performance",
         "Project on Windows filesystem - slower I/O",
-        fixable=False
+        fixable=False,
     )
 
     status.add_issue(
         IssueSeverity.INFO,
         "config",
         "Consider adding .editorconfig for consistent style",
-        fixable=False
+        fixable=False,
     )
 
     # Generate and print report

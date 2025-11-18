@@ -57,7 +57,9 @@ class FixResult:
         self.dry_run = dry_run
 
     def __repr__(self) -> str:
-        status = "DRY-RUN" if self.dry_run else ("SUCCESS" if self.success else "FAILED")
+        status = (
+            "DRY-RUN" if self.dry_run else ("SUCCESS" if self.success else "FAILED")
+        )
         return f"FixResult({status}: {self.message})"
 
 
@@ -266,10 +268,7 @@ class BaseFixer(ABC):
 
         # Use the improved subprocess utilities for better error handling
         success, stdout, stderr = run_command_safe(
-            command,
-            timeout=300,  # 5 minute timeout
-            capture_output=True,
-            text=True
+            command, timeout=300, capture_output=True, text=True  # 5 minute timeout
         )
 
         if success:

@@ -1,0 +1,19 @@
+{
+  "version": "1.0",
+  "checks": {
+    "os": true,
+    "python": true,
+    "venv": true,
+    "dependencies": true,
+    "config": true,
+    "quirks": true
+  },
+  "fixes": {
+    "auto_fix": false,
+    "dry_run_default": true
+  },
+  "output": {
+    "use_color": true,
+    "verbose": false
+  }
+}

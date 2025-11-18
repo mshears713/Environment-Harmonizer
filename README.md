@@ -1,8 +1,10 @@
 # Environment Harmonizer
 
-## Overview
+[![Python Version](https://img.shields.io/badge/python-3.7+-blue.svg)](https://www.python.org/downloads/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Development Status](https://img.shields.io/badge/status-alpha-orange.svg)](https://github.com/environment-harmonizer/environment-harmonizer)
 
-**Environment Harmonizer** is a command-line and programmatic tool designed to scan a project directory and analyze the developer’s environment to ensure consistency, predictability, and readiness for coding. It detects key environment characteristics such as whether the system is Windows native or WSL (Windows Subsystem for Linux), Python version mismatches, the state and type of Python virtual environments (virtualenv, conda, pip, pipx), missing dependencies, system-level quirks, and outdated configuration files. The tool generates a clear, summarized diagnostic report describing the “state of the world” within the project environment and offers optional automated environment harmonization to fix common issues.
+**Environment Harmonizer** is a command-line and programmatic tool designed to scan a project directory and analyze the developer's environment to ensure consistency, predictability, and readiness for coding. It detects key environment characteristics such as whether the system is Windows native or WSL (Windows Subsystem for Linux), Python version mismatches, the state and type of Python virtual environments (virtualenv, conda, pip, pipx), missing dependencies, system-level quirks, and outdated configuration files. The tool generates a clear, summarized diagnostic report describing the “state of the world” within the project environment and offers optional automated environment harmonization to fix common issues.
 
 This project is valuable because environment inconsistencies are a frequent source of developer frustration and bugs, especially across multiple collaborators or when returning to projects after some time. The tool acts as a "dev-environment butler" that ensures everything aligns before development begins, improving developer ergonomics and productivity.
 
@@ -13,6 +15,488 @@ This project is valuable because environment inconsistencies are a frequent sour
 - Designing modular code with both CLI and programmatic API accessibility
 
 It is designed with beginners in mind, with a manageable medium complexity scope focused on diagnosing and harmonizing common environment issues without deeply changing system internals. The expected development timeline is 2–3 weeks.
+
+---
+
+## Quick Start
+
+```bash
+# Install
+pip install -e .
+
+# Scan current directory
+harmonizer
+
+# Preview fixes
+harmonizer --fix --dry-run
+
+# Apply fixes
+harmonizer --fix
+
+# Output as JSON
+harmonizer --json --output report.json
+```
+
+---
+
+## Installation
+
+### From Source (Development)
+
+```bash
+# Clone the repository
+git clone https://github.com/environment-harmonizer/environment-harmonizer.git
+cd environment-harmonizer
+
+# Create and activate a virtual environment (recommended)
+python -m venv env
+source env/bin/activate  # On Windows: .\env\Scripts\activate
+
+# Install in development mode
+pip install -e .
+
+# Install development dependencies (for testing and linting)
+pip install -e ".[dev]"
+```
+
+### From PyPI (Coming Soon)
+
+```bash
+pip install environment-harmonizer
+```
+
+### Requirements
+
+- **Python 3.7 or later**
+- No external dependencies required (uses standard library only)
+- Works on Windows, WSL, Linux, and macOS
+
+---
+
+## Usage
+
+### Basic Usage
+
+**Scan the current directory:**
+```bash
+harmonizer
+```
+
+**Scan a specific project:**
+```bash
+harmonizer /path/to/project
+```
+
+**Verbose output with detailed diagnostics:**
+```bash
+harmonizer --verbose
+```
+
+### Output Formats
+
+**Human-readable report (default):**
+```bash
+harmonizer
+```
+
+**JSON output for integration with other tools:**
+```bash
+harmonizer --json
+```
+
+**Save report to file:**
+```bash
+harmonizer --output report.txt
+harmonizer --json --output report.json
+```
+
+**Disable colored output:**
+```bash
+harmonizer --no-color
+```
+
+### Selective Scanning
+
+**Run specific checks only:**
+```bash
+# Check only Python version and virtual environment
+harmonizer --check python --check venv
+
+# Available checks: os, python, venv, dependencies, config, quirks
+```
+
+**Skip specific checks:**
+```bash
+# Skip dependency and config checks
+harmonizer --skip dependencies --skip config
+```
+
+### Automated Fixes
+
+**Preview fixes without applying (recommended first step):**
+```bash
+harmonizer --fix --dry-run
+```
+
+**Apply fixes interactively (prompts for confirmation):**
+```bash
+harmonizer --fix
+```
+
+**Apply all fixes automatically (use with caution):**
+```bash
+harmonizer --fix --yes
+```
+
+### Configuration
+
+**Create a default configuration file:**
+```bash
+harmonizer --init-config
+```
+
+This creates `.harmonizer.json` in the current directory with default settings.
+
+**Use a custom configuration file:**
+```bash
+harmonizer --config /path/to/config.json
+```
+
+**Adjust logging level:**
+```bash
+harmonizer --log-level DEBUG
+# Levels: DEBUG, INFO, WARNING, ERROR, CRITICAL
+# Logs are written to ~/.harmonizer/logs/
+```
+
+### Common Workflows
+
+**First-time project setup:**
+```bash
+# 1. Scan to identify issues
+harmonizer
+
+# 2. Preview what fixes would do
+harmonizer --fix --dry-run
+
+# 3. Apply fixes
+harmonizer --fix
+
+# 4. Verify environment is harmonized
+harmonizer
+```
+
+**Daily development check:**
+```bash
+# Quick check before starting work
+harmonizer --skip quirks
+```
+
+**CI/CD integration:**
+```bash
+# Generate JSON report for parsing
+harmonizer --json --output environment-report.json
+
+# Exit code: 0 if no errors, 1 if errors found
+```
+
+## Testing
+
+### Running Tests
+
+The project includes comprehensive unit and integration tests:
+
+```bash
+# Install development dependencies (if not already installed)
+pip install -e ".[dev]"
+
+# Run all tests
+pytest
+
+# Run tests with coverage report
+pytest --cov=harmonizer --cov-report=html
+
+# Run specific test files
+pytest tests/test_os_detector.py
+pytest tests/test_python_detector.py
+pytest tests/test_dependency_detector.py
+
+# Run integration tests
+pytest tests/test_integration.py
+
+# Run with verbose output
+pytest -v
+
+# Run with detailed output including print statements
+pytest -v -s
+```
+
+### Test Coverage
+
+The test suite covers:
+- **OS Detection**: Windows vs WSL vs Linux vs macOS detection
+- **Python Version Detection**: Interpreter version parsing and validation
+- **Virtual Environment Detection**: virtualenv, conda, venv, pipx
+- **Dependency Scanning**: requirements.txt and pyproject.toml parsing
+- **Integration Tests**: Full scan workflows on sample projects
+
+### Linting and Code Quality
+
+```bash
+# Code formatting with black
+black harmonizer/ tests/
+
+# Lint with flake8
+flake8 harmonizer/ tests/
+
+# Type checking with mypy
+mypy harmonizer/
+
+# Run all quality checks
+black --check harmonizer/ tests/ && flake8 harmonizer/ tests/ && mypy harmonizer/
+```
+
+---
+
+## Programmatic API Usage
+
+Environment Harmonizer can be used programmatically in your Python scripts:
+
+```python
+from harmonizer.scanners.project_scanner import ProjectScanner
+from harmonizer.reporters.text_reporter import TextReporter
+from harmonizer.reporters.json_reporter import JSONReporter
+
+# Scan a project directory
+scanner = ProjectScanner("/path/to/project", verbose=True)
+env_status = scanner.scan()
+
+# Generate a text report
+text_reporter = TextReporter(use_color=True)
+report = text_reporter.generate(env_status)
+print(report)
+
+# Generate a JSON report
+json_reporter = JSONReporter(indent=2)
+json_report = json_reporter.generate(env_status)
+print(json_report)
+
+# Access specific information
+print(f"OS Type: {env_status.os_type}")
+print(f"Python Version: {env_status.python_version}")
+print(f"Virtual Environment: {env_status.venv_type}")
+print(f"Issues Found: {len(env_status.issues)}")
+
+# Check for specific issue types
+has_errors = env_status.has_errors()
+has_warnings = env_status.has_warnings()
+
+# Apply fixes programmatically
+from harmonizer.fixers import VenvFixer, DependencyFixer, ConfigFixer
+
+venv_fixer = VenvFixer(env_status, verbose=True, auto_yes=False)
+if venv_fixer.can_fix():
+    results = venv_fixer.apply_fixes(dry_run=False)
+    for result in results:
+        print(f"{'✓' if result.success else '✗'} {result.message}")
+```
+
+### Advanced API Examples
+
+```python
+# Run selective checks
+scanner = ProjectScanner("/path/to/project")
+env_status = scanner.scan(checks=["python", "venv", "dependencies"])
+
+# Custom reporting
+from harmonizer.models import IssueSeverity
+
+critical_issues = [
+    issue for issue in env_status.issues
+    if issue.severity == IssueSeverity.ERROR
+]
+
+for issue in critical_issues:
+    print(f"[{issue.category}] {issue.message}")
+    if issue.fix_suggestion:
+        print(f"  Fix: {issue.fix_suggestion}")
+
+# Access detection results directly
+from harmonizer.detectors.os_detector import detect_os_type
+from harmonizer.detectors.python_detector import detect_python_version
+from harmonizer.detectors.venv_detector import detect_venv_type
+
+os_type = detect_os_type()
+python_version = detect_python_version()
+venv_info = detect_venv_type("/path/to/project")
+
+print(f"OS: {os_type}, Python: {python_version}, Venv: {venv_info.venv_type}")
+```
+
+---
+
+## Troubleshooting
+
+### Common Issues
+
+**Issue: "harmonizer: command not found"**
+
+Solution:
+```bash
+# Make sure the package is installed
+pip install -e .
+
+# Verify installation
+pip list | grep environment-harmonizer
+
+# Check if the entry point is in your PATH
+which harmonizer  # Linux/macOS
+where harmonizer  # Windows
+```
+
+**Issue: "Permission denied" when scanning directory**
+
+Solution:
+```bash
+# Check directory permissions
+ls -la /path/to/project
+
+# Run with appropriate permissions or change directory ownership
+sudo chown -R $USER:$USER /path/to/project
+```
+
+**Issue: Fixes not being applied**
+
+Solution:
+```bash
+# 1. Use dry-run to see what would happen
+harmonizer --fix --dry-run
+
+# 2. Check logs for detailed error messages
+harmonizer --log-level DEBUG --fix
+
+# 3. View log files
+cat ~/.harmonizer/logs/harmonizer.log
+```
+
+**Issue: Virtual environment not detected**
+
+Solution:
+```bash
+# Ensure you're in the project directory
+cd /path/to/project
+
+# Check if venv exists
+ls -la env/ .venv/ venv/
+
+# Manually activate and scan
+source env/bin/activate  # Linux/macOS
+# or
+.\env\Scripts\activate  # Windows
+harmonizer --verbose
+```
+
+**Issue: Dependency scanning not working**
+
+Solution:
+```bash
+# Verify requirements.txt or pyproject.toml exists
+ls -la requirements.txt pyproject.toml
+
+# Check file format
+cat requirements.txt
+
+# Run with verbose output to see what's detected
+harmonizer --verbose --check dependencies
+```
+
+**Issue: WSL detection incorrect**
+
+Solution:
+```bash
+# Check WSL environment variables
+echo $WSL_DISTRO_NAME
+cat /proc/version
+
+# Force specific check
+harmonizer --check os --verbose
+```
+
+### Getting Help
+
+**View detailed logs:**
+```bash
+# Set log level to DEBUG
+harmonizer --log-level DEBUG
+
+# Logs are stored in:
+# Linux/macOS: ~/.harmonizer/logs/
+# Windows: %USERPROFILE%\.harmonizer\logs\
+```
+
+**Report an issue:**
+- GitHub Issues: https://github.com/environment-harmonizer/environment-harmonizer/issues
+- Include: OS type, Python version, command run, error message, and relevant logs
+
+**Configuration troubleshooting:**
+```bash
+# Create fresh config
+harmonizer --init-config
+
+# Validate config file
+python -m json.tool .harmonizer.json
+```
+
+---
+
+## Known Limitations
+
+- **Conda environments**: Detection works, but fixes for conda environments are limited
+- **System Python**: Modifying system Python is not recommended and not fully supported
+- **Network dependencies**: Package installation requires internet connectivity
+- **Platform-specific**: Some quirks are platform-specific and may not transfer across OS types
+- **Poetry/Pipenv**: Limited support for modern Python package managers (planned for future versions)
+
+---
+
+## Contributing
+
+Contributions are welcome! This project is designed to be beginner-friendly.
+
+### Development Setup
+
+```bash
+# Clone and setup
+git clone https://github.com/environment-harmonizer/environment-harmonizer.git
+cd environment-harmonizer
+python -m venv env
+source env/bin/activate
+pip install -e ".[dev]"
+
+# Make changes
+# ...
+
+# Run tests
+pytest
+
+# Format code
+black harmonizer/ tests/
+
+# Create pull request
+```
+
+### Guidelines
+
+- Follow existing code style (PEP 8, with black formatting)
+- Add tests for new features
+- Update documentation
+- Include educational comments for beginner developers
+
+---
+
+## License
+
+This project is licensed under the MIT License. See LICENSE file for details.
 
 ---
 

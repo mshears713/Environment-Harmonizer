@@ -87,7 +87,9 @@ class PerformanceMonitor:
         """
         self._active_timers[operation] = time.perf_counter()
 
-    def stop_timer(self, operation: str, metadata: Optional[Dict[str, Any]] = None) -> Optional[float]:
+    def stop_timer(
+        self, operation: str, metadata: Optional[Dict[str, Any]] = None
+    ) -> Optional[float]:
         """
         Stop timing an operation and record the result.
 
@@ -347,6 +349,7 @@ def timed(operation_name: Optional[str] = None):
                 # Log timing if logger is available
                 try:
                     from harmonizer.utils.logging_config import HarmonizerLogger
+
                     logger = HarmonizerLogger.get_logger("harmonizer.performance")
                     logger.info(f"{op_name} completed in {duration:.3f}s")
                 except ImportError:

@@ -38,7 +38,6 @@ COMMON_CONFIG_FILES = {
         "required": False,
         "description": "Git attributes for line endings and diffs",
     },
-
     # Python project configuration
     "pyproject.toml": {
         "category": "python_config",
@@ -60,7 +59,6 @@ COMMON_CONFIG_FILES = {
         "required": False,
         "description": "Package manifest for non-Python files",
     },
-
     # Dependency management
     "requirements.txt": {
         "category": "dependencies",
@@ -87,7 +85,6 @@ COMMON_CONFIG_FILES = {
         "required": False,
         "description": "Poetry lock file",
     },
-
     # Environment
     ".env": {
         "category": "environment",
@@ -99,7 +96,6 @@ COMMON_CONFIG_FILES = {
         "required": False,
         "description": "Example environment variables template",
     },
-
     # Python version
     ".python-version": {
         "category": "python_version",
@@ -111,7 +107,6 @@ COMMON_CONFIG_FILES = {
         "required": False,
         "description": "Python version for deployment platforms",
     },
-
     # Code quality
     ".editorconfig": {
         "category": "code_quality",
@@ -138,7 +133,6 @@ COMMON_CONFIG_FILES = {
         "required": False,
         "description": "Pre-commit hooks configuration",
     },
-
     # Testing
     "pytest.ini": {
         "category": "testing",
@@ -155,7 +149,6 @@ COMMON_CONFIG_FILES = {
         "required": False,
         "description": "Coverage.py configuration",
     },
-
     # CI/CD
     ".travis.yml": {
         "category": "ci_cd",
@@ -172,7 +165,6 @@ COMMON_CONFIG_FILES = {
         "required": False,
         "description": "Jenkins pipeline configuration",
     },
-
     # Docker
     "Dockerfile": {
         "category": "docker",
@@ -189,7 +181,6 @@ COMMON_CONFIG_FILES = {
         "required": False,
         "description": "Docker build ignore patterns",
     },
-
     # Documentation
     "README.md": {
         "category": "documentation",
@@ -437,13 +428,19 @@ def get_recommended_config_files(project_path: str) -> List[Tuple[str, str]]:
     if not (project / ".editorconfig").exists():
         if (project / ".git").exists():  # Git repository
             recommendations.append(
-                (".editorconfig", "Ensures consistent code style across different editors")
+                (
+                    ".editorconfig",
+                    "Ensures consistent code style across different editors",
+                )
             )
 
     # Check for .env.example if .env exists
     if (project / ".env").exists() and not (project / ".env.example").exists():
         recommendations.append(
-            (".env.example", "Template for required environment variables (without secrets)")
+            (
+                ".env.example",
+                "Template for required environment variables (without secrets)",
+            )
         )
 
     # Check for testing config if tests exist
@@ -454,7 +451,9 @@ def get_recommended_config_files(project_path: str) -> List[Tuple[str, str]]:
         )
 
     # Check for pre-commit if git repo
-    if (project / ".git").exists() and not (project / ".pre-commit-config.yaml").exists():
+    if (project / ".git").exists() and not (
+        project / ".pre-commit-config.yaml"
+    ).exists():
         recommendations.append(
             (".pre-commit-config.yaml", "Automated code quality checks before commits")
         )
@@ -485,50 +484,60 @@ def detect_config_issues(project_path: str) -> List[Dict[str, str]]:
 
     # Check for missing .gitignore
     if not (Path(project_path) / ".gitignore").exists():
-        issues.append({
-            "severity": "warning",
-            "message": "No .gitignore file found - unwanted files may be committed",
-            "category": "config",
-        })
+        issues.append(
+            {
+                "severity": "warning",
+                "message": "No .gitignore file found - unwanted files may be committed",
+                "category": "config",
+            }
+        )
     else:
         # Check .gitignore completeness
         is_complete, missing = check_gitignore_completeness(project_path)
         if not is_complete:
-            issues.append({
-                "severity": "info",
-                "message": f".gitignore missing important patterns: {', '.join(missing[:3])}",
-                "category": "config",
-            })
+            issues.append(
+                {
+                    "severity": "info",
+                    "message": f".gitignore missing important patterns: {', '.join(missing[:3])}",
+                    "category": "config",
+                }
+            )
 
     # Check for .env security issue
     if not check_env_file_in_gitignore(project_path):
-        issues.append({
-            "severity": "error",
-            "message": ".env file exists but is NOT in .gitignore - SECURITY RISK!",
-            "category": "security",
-        })
+        issues.append(
+            {
+                "severity": "error",
+                "message": ".env file exists but is NOT in .gitignore - SECURITY RISK!",
+                "category": "security",
+            }
+        )
 
     # Check for missing README
     readme_files = ["README.md", "README.rst", "README.txt", "README"]
     has_readme = any((Path(project_path) / readme).exists() for readme in readme_files)
 
     if not has_readme:
-        issues.append({
-            "severity": "warning",
-            "message": "No README file found - project lacks documentation",
-            "category": "config",
-        })
+        issues.append(
+            {
+                "severity": "warning",
+                "message": "No README file found - project lacks documentation",
+                "category": "config",
+            }
+        )
 
     # Check for dependency file
     dep_files = ["requirements.txt", "pyproject.toml", "Pipfile", "setup.py"]
     has_deps = any((Path(project_path) / dep).exists() for dep in dep_files)
 
     if not has_deps:
-        issues.append({
-            "severity": "warning",
-            "message": "No dependency file found (requirements.txt, pyproject.toml, etc.)",
-            "category": "config",
-        })
+        issues.append(
+            {
+                "severity": "warning",
+                "message": "No dependency file found (requirements.txt, pyproject.toml, etc.)",
+                "category": "config",
+            }
+        )
 
     return issues
 
@@ -547,16 +556,16 @@ if __name__ == "__main__":
     results = detect_config_files(".")
 
     print(f"\nFound Config Files: {results['total_found']}")
-    for file in sorted(results['found']):
+    for file in sorted(results["found"]):
         print(f"  ✓ {file}")
 
     print(f"\nMissing Required Files: {len(results['missing_required'])}")
-    for file in results['missing_required']:
+    for file in results["missing_required"]:
         print(f"  ✗ {file}")
 
     print(f"\nConfiguration by Category:")
-    for category, files in sorted(results['by_category'].items()):
-        if files['found']:
+    for category, files in sorted(results["by_category"].items()):
+        if files["found"]:
             print(f"  {category}: {', '.join(files['found'])}")
 
     # Check for issues

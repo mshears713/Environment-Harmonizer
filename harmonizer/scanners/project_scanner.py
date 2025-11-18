@@ -62,7 +62,9 @@ class ProjectScanner:
         verbose: Whether to print verbose output during scanning
     """
 
-    def __init__(self, project_path: str = ".", verbose: bool = False, use_color: bool = True):
+    def __init__(
+        self, project_path: str = ".", verbose: bool = False, use_color: bool = True
+    ):
         """
         Initialize the project scanner.
 
@@ -114,28 +116,28 @@ class ProjectScanner:
         """
 
         if checks is None:
-            checks = ['os', 'python', 'venv', 'dependencies', 'config', 'quirks']
+            checks = ["os", "python", "venv", "dependencies", "config", "quirks"]
 
         # Initialize environment status with default values
         env_status = self._initialize_environment_status()
 
         # Run detection modules in logical order
-        if 'os' in checks:
+        if "os" in checks:
             self._scan_os(env_status)
 
-        if 'python' in checks:
+        if "python" in checks:
             self._scan_python(env_status)
 
-        if 'venv' in checks:
+        if "venv" in checks:
             self._scan_venv(env_status)
 
-        if 'dependencies' in checks:
+        if "dependencies" in checks:
             self._scan_dependencies(env_status)
 
-        if 'config' in checks:
+        if "config" in checks:
             self._scan_config(env_status)
 
-        if 'quirks' in checks:
+        if "quirks" in checks:
             self._scan_quirks(env_status)
 
         return env_status
@@ -175,8 +177,12 @@ class ProjectScanner:
             env_status.os_type = detect_os_type()
             env_status.os_version = get_os_version()
 
-            self.logger.info(f"Detected OS: {env_status.os_type.value} - {env_status.os_version}")
-            self.progress.complete_step(f"OS: {env_status.os_type.value} ({env_status.os_version})")
+            self.logger.info(
+                f"Detected OS: {env_status.os_type.value} - {env_status.os_version}"
+            )
+            self.progress.complete_step(
+                f"OS: {env_status.os_type.value} ({env_status.os_version})"
+            )
             self.progress.verbose(f"OS Type: {env_status.os_type.value}")
             self.progress.verbose(f"OS Version: {env_status.os_version}")
 
@@ -185,7 +191,11 @@ class ProjectScanner:
             raise
         finally:
             duration = self.perf_monitor.stop_timer("scan_os")
-            self.logger.debug(f"OS detection completed in {duration:.3f}s" if duration else "OS detection timer not found")
+            self.logger.debug(
+                f"OS detection completed in {duration:.3f}s"
+                if duration
+                else "OS detection timer not found"
+            )
 
     def _scan_python(self, env_status: EnvironmentStatus) -> None:
         """
@@ -218,7 +228,9 @@ class ProjectScanner:
 
             if issue:
                 env_status.issues.append(issue)
-                self.progress.warning(f"Python version mismatch: current {env_status.python_version}, required {required_version}")
+                self.progress.warning(
+                    f"Python version mismatch: current {env_status.python_version}, required {required_version}"
+                )
 
     def _scan_venv(self, env_status: EnvironmentStatus) -> None:
         """
@@ -241,7 +253,9 @@ class ProjectScanner:
             env_status.venv_path = venv_info["path"]
 
         status_str = "active" if env_status.venv_active else "not active"
-        self.progress.complete_step(f"Virtual Env: {env_status.venv_type.value} ({status_str})")
+        self.progress.complete_step(
+            f"Virtual Env: {env_status.venv_type.value} ({status_str})"
+        )
         self.progress.verbose(f"Venv Type: {env_status.venv_type.value}")
         self.progress.verbose(f"Venv Active: {env_status.venv_active}")
         if env_status.venv_path:
@@ -295,13 +309,17 @@ class ProjectScanner:
                 f"{len(env_status.missing_packages)} required package(s) not installed: "
                 f"{', '.join(env_status.missing_packages[:5])}",
                 fixable=True,
-                fix_command=f"pip install -r {env_status.requirements_file}"
-                if env_status.requirements_file
-                else None,
+                fix_command=(
+                    f"pip install -r {env_status.requirements_file}"
+                    if env_status.requirements_file
+                    else None
+                ),
             )
 
             if self.verbose:
-                print(f"  ✗ Missing packages: {', '.join(env_status.missing_packages[:5])}")
+                print(
+                    f"  ✗ Missing packages: {', '.join(env_status.missing_packages[:5])}"
+                )
 
         elif not env_status.requirements_file:
             # No requirements file found - might be intentional or might be an issue
@@ -447,12 +465,16 @@ if __name__ == "__main__":
         print(f"Project: {status.project_path}")
         print(f"OS: {status.os_type.value} ({status.os_version})")
         print(f"Python: {status.python_version}")
-        print(f"Virtual Environment: {status.venv_type.value} (Active: {status.venv_active})")
+        print(
+            f"Virtual Environment: {status.venv_type.value} (Active: {status.venv_active})"
+        )
         print(f"Config Files: {len(status.config_files)}")
 
         if status.requirements_file:
-            print(f"Dependencies: {len(status.installed_packages)} installed, "
-                  f"{len(status.missing_packages)} missing")
+            print(
+                f"Dependencies: {len(status.installed_packages)} installed, "
+                f"{len(status.missing_packages)} missing"
+            )
 
         # Print issues
         if status.issues:
@@ -475,6 +497,7 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"Error during scan: {e}")
         import traceback
+
         traceback.print_exc()
 
     print()

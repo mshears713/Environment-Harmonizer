@@ -212,9 +212,7 @@ class JSONReporter:
 
 # Convenience function for quick JSON generation
 def generate_json_report(
-    env_status: EnvironmentStatus,
-    indent: int = 2,
-    include_metadata: bool = True
+    env_status: EnvironmentStatus, indent: int = 2, include_metadata: bool = True
 ) -> str:
     """
     Convenience function to generate a JSON report.
@@ -239,8 +237,7 @@ def generate_json_report(
 
 
 def generate_json_dict(
-    env_status: EnvironmentStatus,
-    include_metadata: bool = True
+    env_status: EnvironmentStatus, include_metadata: bool = True
 ) -> Dict[str, Any]:
     """
     Convenience function to generate a JSON-compatible dictionary.
@@ -292,21 +289,21 @@ if __name__ == "__main__":
         "dependency",
         "2 required packages not installed",
         fixable=True,
-        fix_command="pip install -r requirements.txt"
+        fix_command="pip install -r requirements.txt",
     )
 
     status.add_issue(
         IssueSeverity.WARNING,
         "wsl_performance",
         "Project on Windows filesystem - slower I/O",
-        fixable=False
+        fixable=False,
     )
 
     status.add_issue(
         IssueSeverity.INFO,
         "config",
         "Consider adding .editorconfig for consistent style",
-        fixable=False
+        fixable=False,
     )
 
     print("=" * 80)

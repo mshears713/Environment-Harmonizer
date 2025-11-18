@@ -97,7 +97,7 @@ def _detect_wsl_quirks(project_path: str) -> List[Issue]:
                 severity=IssueSeverity.WARNING,
                 category="wsl_performance",
                 message=f"Project is on Windows filesystem (/mnt/{drive_letter}/) - "
-                        "Consider moving to Linux filesystem for better performance",
+                "Consider moving to Linux filesystem for better performance",
                 fixable=False,
                 fix_command=None,
             )
@@ -109,7 +109,7 @@ def _detect_wsl_quirks(project_path: str) -> List[Issue]:
                 severity=IssueSeverity.INFO,
                 category="wsl_performance",
                 message="File I/O operations are significantly slower on Windows filesystem from WSL. "
-                        "Git operations, npm/pip installs, and file watches may be slow.",
+                "Git operations, npm/pip installs, and file watches may be slow.",
                 fixable=False,
             )
         )
@@ -162,7 +162,7 @@ def _detect_windows_quirks(project_path: str) -> List[Issue]:
                 severity=IssueSeverity.WARNING,
                 category="windows_path",
                 message=f"Project path is long ({len(str(project))} characters) - "
-                        "Windows has a 260 character limit. Enable long path support in registry.",
+                "Windows has a 260 character limit. Enable long path support in registry.",
                 fixable=False,
             )
         )
@@ -206,7 +206,7 @@ def _detect_linux_quirks(project_path: str) -> List[Issue]:
                 severity=IssueSeverity.INFO,
                 category="cross_platform",
                 message=f"Found Windows-specific files: {', '.join(found_windows_files[:5])}. "
-                        "These won't execute on Linux.",
+                "These won't execute on Linux.",
                 fixable=False,
             )
         )
@@ -232,7 +232,7 @@ def _detect_path_quirks(project_path: str, os_type: OSType) -> List[Issue]:
                 severity=IssueSeverity.INFO,
                 category="path",
                 message="Project path contains spaces - some tools may have issues. "
-                        "Consider using underscores or hyphens instead.",
+                "Consider using underscores or hyphens instead.",
                 fixable=False,
             )
         )
@@ -246,7 +246,7 @@ def _detect_path_quirks(project_path: str, os_type: OSType) -> List[Issue]:
                 severity=IssueSeverity.WARNING,
                 category="path",
                 message="Project path contains non-ASCII characters - "
-                        "may cause issues with some tools.",
+                "may cause issues with some tools.",
                 fixable=False,
             )
         )
@@ -279,8 +279,8 @@ def _check_for_windows_paths(project_path: Path) -> Optional[Issue]:
             severity=IssueSeverity.WARNING,
             category="cross_platform",
             message=f"Found Windows path separators (backslashes) in Python files: "
-                    f"{', '.join(files_with_backslashes[:3])}. "
-                    f"Use pathlib.Path or forward slashes for cross-platform compatibility.",
+            f"{', '.join(files_with_backslashes[:3])}. "
+            f"Use pathlib.Path or forward slashes for cross-platform compatibility.",
             fixable=False,
         )
 
@@ -309,8 +309,8 @@ def _check_for_unix_paths(project_path: Path) -> Optional[Issue]:
             severity=IssueSeverity.INFO,
             category="cross_platform",
             message=f"Found Unix-style paths in Python files: "
-                    f"{', '.join(files_with_unix_paths[:3])}. "
-                    f"Use pathlib.Path for cross-platform compatibility.",
+            f"{', '.join(files_with_unix_paths[:3])}. "
+            f"Use pathlib.Path for cross-platform compatibility.",
             fixable=False,
         )
 
@@ -336,12 +336,12 @@ def _check_git_line_endings(project_path: Path) -> Optional[Issue]:
 
     # Note: run_command_safe doesn't support cwd parameter, so we need to use a workaround
     import os
+
     old_cwd = os.getcwd()
     try:
         os.chdir(str(project_path))
         success, stdout, _ = run_command_safe(
-            ["git", "config", "--get", "core.autocrlf"],
-            timeout=2
+            ["git", "config", "--get", "core.autocrlf"], timeout=2
         )
 
         if success:
@@ -352,8 +352,8 @@ def _check_git_line_endings(project_path: Path) -> Optional[Issue]:
                     severity=IssueSeverity.WARNING,
                     category="git_config",
                     message="git core.autocrlf is set to 'true' in WSL - "
-                            "this can cause line ending issues. "
-                            "Recommended: 'input' or 'false' for WSL.",
+                    "this can cause line ending issues. "
+                    "Recommended: 'input' or 'false' for WSL.",
                     fixable=True,
                     fix_command="git config --global core.autocrlf input",
                 )
@@ -428,7 +428,12 @@ def analyze_path_env() -> Dict[str, any]:
         "duplicates": duplicates,
         "non_existent": non_existent,
         "windows_executables_found": windows_executables[:10],
-        "linux_first": len(linux_paths) > 0 and (not windows_paths or linux_paths[0] < windows_paths[0] if windows_paths else True),
+        "linux_first": len(linux_paths) > 0
+        and (
+            not windows_paths or linux_paths[0] < windows_paths[0]
+            if windows_paths
+            else True
+        ),
     }
 
 
@@ -454,17 +459,39 @@ def _check_wsl_path_pollution() -> Optional[Issue]:
     total_entries = path_analysis["total_entries"]
 
     if len(windows_paths) > 5:
-        windows_percentage = (len(windows_paths) / total_entries * 100) if total_entries > 0 else 0
+        windows_percentage = (
+            (len(windows_paths) / total_entries * 100) if total_entries > 0 else 0
+        )
 
-        details = f"WSL PATH contains {len(windows_paths)} Windows paths " \
-                  f"({windows_percentage:.1f}% of {total_entries} total entries)"
+        details = (
+            f"WSL PATH contains {len(windows_paths)} Windows paths "
+            f"({windows_percentage:.1f}% of {total_entries} total entries)"
+        )
 
         # Check if Windows paths come before Linux paths (problematic)
         if windows_paths and path_analysis["linux_paths"]:
-            first_windows_idx = next((i for i, p in enumerate(os.environ.get("PATH", "").split(":")) if p.startswith("/mnt/")), None)
-            first_linux_idx = next((i for i, p in enumerate(os.environ.get("PATH", "").split(":")) if not p.startswith("/mnt/")), None)
+            first_windows_idx = next(
+                (
+                    i
+                    for i, p in enumerate(os.environ.get("PATH", "").split(":"))
+                    if p.startswith("/mnt/")
+                ),
+                None,
+            )
+            first_linux_idx = next(
+                (
+                    i
+                    for i, p in enumerate(os.environ.get("PATH", "").split(":"))
+                    if not p.startswith("/mnt/")
+                ),
+                None,
+            )
 
-            if first_windows_idx is not None and first_linux_idx is not None and first_windows_idx < first_linux_idx:
+            if (
+                first_windows_idx is not None
+                and first_linux_idx is not None
+                and first_windows_idx < first_linux_idx
+            ):
                 details += ". WARNING: Windows paths appear BEFORE Linux paths - may use Windows executables instead of Linux!"
 
         return Issue(
@@ -491,7 +518,7 @@ def _check_wsl_interop() -> Optional[Issue]:
             severity=IssueSeverity.INFO,
             category="wsl_interop",
             message="WSL interop is enabled - Windows programs can be called from Linux. "
-                    "Be aware of which environment your commands run in.",
+            "Be aware of which environment your commands run in.",
             fixable=False,
         )
 
@@ -522,9 +549,7 @@ def _check_case_sensitivity_issues(project_path: Path) -> Optional[Issue]:
             if lower_name in files_by_lower:
                 # Found a potential conflict
                 if files_by_lower[lower_name].name != file.name:
-                    case_conflicts.append(
-                        (files_by_lower[lower_name].name, file.name)
-                    )
+                    case_conflicts.append((files_by_lower[lower_name].name, file.name))
             else:
                 files_by_lower[lower_name] = file
 
@@ -534,7 +559,7 @@ def _check_case_sensitivity_issues(project_path: Path) -> Optional[Issue]:
             severity=IssueSeverity.WARNING,
             category="cross_platform",
             message=f"Found files that differ only in case: {', '.join(conflict_examples)}. "
-                    "This will cause issues on case-sensitive filesystems (Linux/Mac).",
+            "This will cause issues on case-sensitive filesystems (Linux/Mac).",
             fixable=False,
         )
 
@@ -562,32 +587,40 @@ def get_platform_recommendations(os_type: OSType) -> List[str]:
     recommendations = []
 
     if os_type == OSType.WSL:
-        recommendations.extend([
-            "Keep project files on Linux filesystem (~/projects) not Windows (/mnt/c/)",
-            "Use Linux versions of tools (node, python) not Windows versions",
-            "Configure git: core.autocrlf=input for proper line endings",
-            "Consider disabling Windows PATH in /etc/wsl.conf for cleaner environment",
-        ])
+        recommendations.extend(
+            [
+                "Keep project files on Linux filesystem (~/projects) not Windows (/mnt/c/)",
+                "Use Linux versions of tools (node, python) not Windows versions",
+                "Configure git: core.autocrlf=input for proper line endings",
+                "Consider disabling Windows PATH in /etc/wsl.conf for cleaner environment",
+            ]
+        )
     elif os_type == OSType.WINDOWS_NATIVE:
-        recommendations.extend([
-            "Use pathlib.Path for cross-platform file paths",
-            "Enable long path support in Windows registry or Group Policy",
-            "Use forward slashes (/) even on Windows for compatibility",
-            "Configure git: core.autocrlf=true for Windows line endings",
-        ])
+        recommendations.extend(
+            [
+                "Use pathlib.Path for cross-platform file paths",
+                "Enable long path support in Windows registry or Group Policy",
+                "Use forward slashes (/) even on Windows for compatibility",
+                "Configure git: core.autocrlf=true for Windows line endings",
+            ]
+        )
     elif os_type == OSType.LINUX:
-        recommendations.extend([
-            "Be aware of case sensitivity - File.py != file.py",
-            "Use .gitattributes to enforce line endings for cross-platform projects",
-            "Make shell scripts executable with chmod +x",
-        ])
+        recommendations.extend(
+            [
+                "Be aware of case sensitivity - File.py != file.py",
+                "Use .gitattributes to enforce line endings for cross-platform projects",
+                "Make shell scripts executable with chmod +x",
+            ]
+        )
 
     # Universal recommendations
-    recommendations.extend([
-        "Use .editorconfig to enforce consistent code style",
-        "Add .gitattributes for line ending consistency",
-        "Test on multiple platforms if project is cross-platform",
-    ])
+    recommendations.extend(
+        [
+            "Use .editorconfig to enforce consistent code style",
+            "Add .gitattributes for line ending consistency",
+            "Test on multiple platforms if project is cross-platform",
+        ]
+    )
 
     return recommendations
 

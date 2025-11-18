@@ -1,0 +1,3 @@
+# Example project dependencies
+# These are standard library packages that should already be available
+# For demo purposes - no external dependencies required

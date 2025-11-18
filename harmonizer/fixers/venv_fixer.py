@@ -90,7 +90,9 @@ class VenvFixer(BaseFixer):
         if self.env_status.venv_type == VenvType.NONE:
             print("  - Create a new virtual environment (venv)")
         elif not self.env_status.venv_active:
-            print(f"  - Provide activation instructions for {self.env_status.venv_type.value}")
+            print(
+                f"  - Provide activation instructions for {self.env_status.venv_type.value}"
+            )
 
     def _apply_fix_impl(self, dry_run: bool = False) -> List[FixResult]:
         """
