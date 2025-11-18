@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  harmonizer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: environment-harmonizer:latest
+    container_name: env-harmonizer
+    volumes:
+      # Mount current directory to scan
+      - .:/workspace
+      # Prevent overwriting the source code
+      - /workspace/harmonizer
+      - /workspace/.git
+    working_dir: /workspace
+    # Override default command to allow custom arguments
+    # Usage: docker-compose run harmonizer [args]
+    command: ["."]
+    environment:
+      - PYTHONUNBUFFERED=1
+    stdin_open: true
+    tty: true
+
+  # Example service for scanning a different project
+  harmonizer-scan:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: environment-harmonizer:latest
+    volumes:
+      # Mount your project directory here
+      - ${PROJECT_PATH:-.}:/project
+    working_dir: /project
+    command: ["/project", "--verbose"]
+    environment:
+      - PYTHONUNBUFFERED=1
