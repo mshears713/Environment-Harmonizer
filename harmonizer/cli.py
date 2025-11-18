@@ -20,9 +20,9 @@ from typing import List, Optional
 
 from harmonizer import __version__
 from harmonizer.models import EnvironmentStatus, OSType, VenvType, IssueSeverity
-from harmonizer.detectors.os_detector import detect_os_type, get_os_version
-from harmonizer.detectors.python_detector import detect_python_version, get_project_python_requirement, check_version_compatibility
-from harmonizer.detectors.venv_detector import detect_venv_type
+from harmonizer.scanners.project_scanner import ProjectScanner
+from harmonizer.reporters.text_reporter import TextReporter
+from harmonizer.reporters.json_reporter import JSONReporter
 from harmonizer.utils.config import load_config_or_default, get_default_config
 
 
@@ -138,11 +138,11 @@ def create_parser() -> argparse.ArgumentParser:
     scan_group.add_argument(
         "--check",
         action="append",
-        choices=["os", "python", "venv", "dependencies", "config"],
+        choices=["os", "python", "venv", "dependencies", "config", "quirks"],
         metavar="CHECK",
         help="""
         Run specific checks only (can be specified multiple times).
-        Choices: os, python, venv, dependencies, config
+        Choices: os, python, venv, dependencies, config, quirks
         Example: --check python --check venv
         """,
     )
@@ -150,11 +150,11 @@ def create_parser() -> argparse.ArgumentParser:
     scan_group.add_argument(
         "--skip",
         action="append",
-        choices=["os", "python", "venv", "dependencies", "config"],
+        choices=["os", "python", "venv", "dependencies", "config", "quirks"],
         metavar="CHECK",
         help="""
         Skip specific checks (can be specified multiple times).
-        Choices: os, python, venv, dependencies, config
+        Choices: os, python, venv, dependencies, config, quirks
         """,
     )
 
@@ -266,88 +266,20 @@ def run_scan(args: argparse.Namespace) -> EnvironmentStatus:
         EnvironmentStatus object with scan results
 
     EDUCATIONAL NOTE - Scan Orchestration:
-    This function coordinates all the detector modules:
-    1. Check which scans to run (based on --check/--skip)
-    2. Run each enabled detector
-    3. Aggregate results into EnvironmentStatus
-    4. Return completed status object
-
-    This is the "controller" in an MVC-like pattern.
+    This function now uses the ProjectScanner class to coordinate
+    all detection modules. This provides better separation of concerns
+    and makes the CLI focused on argument handling rather than
+    detection logic.
     """
 
     # Determine which checks to run
     checks_to_run = _determine_checks(args)
 
-    if args.verbose:
-        print(f"Running checks: {', '.join(checks_to_run)}")
+    # Create scanner with verbose option
+    scanner = ProjectScanner(args.project_path, verbose=args.verbose)
 
-    # Initialize environment status with required fields
-    # We'll populate these from detectors
-    os_type = OSType.UNKNOWN
-    os_version = "Unknown"
-    python_version = "Unknown"
-    python_executable = sys.executable
-    venv_type = VenvType.NONE
-    venv_active = False
-
-    # Run OS detection
-    if "os" in checks_to_run:
-        if args.verbose:
-            print("Detecting operating system...")
-        os_type = detect_os_type()
-        os_version = get_os_version()
-
-    # Run Python detection
-    if "python" in checks_to_run:
-        if args.verbose:
-            print("Detecting Python version...")
-        py_info = detect_python_version()
-        python_version = py_info["version"]
-        python_executable = py_info["executable"]
-
-    # Run virtual environment detection
-    if "venv" in checks_to_run:
-        if args.verbose:
-            print("Detecting virtual environment...")
-        venv_info = detect_venv_type()
-        venv_type = venv_info["type"]
-        venv_active = venv_info["active"]
-
-    # Create EnvironmentStatus object
-    env_status = EnvironmentStatus(
-        os_type=os_type,
-        os_version=os_version,
-        python_version=python_version,
-        python_executable=python_executable,
-        venv_type=venv_type,
-        venv_active=venv_active,
-        project_path=str(Path(args.project_path).resolve()),
-    )
-
-    # Add venv path if detected
-    if venv_info.get("path"):
-        env_status.venv_path = venv_info["path"]
-
-    # Check Python version compatibility
-    if "python" in checks_to_run:
-        required_version = get_project_python_requirement(args.project_path)
-        if required_version:
-            compatible, issue = check_version_compatibility(
-                python_version, required_version
-            )
-            if issue:
-                env_status.issues.append(issue)
-
-    # Check if virtual environment should be active but isn't
-    if "venv" in checks_to_run:
-        if venv_type != VenvType.NONE and not venv_active:
-            env_status.add_issue(
-                IssueSeverity.WARNING,
-                "venv",
-                f"Virtual environment detected ({venv_type.value}) but not active",
-                fixable=True,
-                fix_command=f"Activate virtual environment at {venv_info.get('path', 'unknown')}",
-            )
+    # Run scan with specified checks
+    env_status = scanner.scan(checks=checks_to_run)
 
     return env_status
 
@@ -370,7 +302,7 @@ def _determine_checks(args: argparse.Namespace) -> List[str]:
     - Convert back to list for iteration
     """
 
-    all_checks = {"os", "python", "venv", "dependencies", "config"}
+    all_checks = {"os", "python", "venv", "dependencies", "config", "quirks"}
 
     if args.check:
         # Only run specified checks
@@ -393,11 +325,12 @@ def display_results(env_status: EnvironmentStatus, args: argparse.Namespace) -> 
         args: Parsed arguments (contains output format options)
 
     EDUCATIONAL NOTE - Output Formatting:
-    Different output formats serve different purposes:
-    - Text: Human-readable, good for terminal use
-    - JSON: Machine-readable, good for automation
-    - Colored: Enhanced readability in terminals
-    - Plain: Compatible with logs and pipes
+    We now use dedicated reporter classes for generating output:
+    - TextReporter: Human-readable reports with color
+    - JSONReporter: Machine-readable structured data
+
+    This separation makes it easy to add new output formats
+    (HTML, XML, etc.) without modifying the CLI logic.
     """
 
     if args.json:
@@ -408,122 +341,36 @@ def display_results(env_status: EnvironmentStatus, args: argparse.Namespace) -> 
 
 def _display_text(env_status: EnvironmentStatus, args: argparse.Namespace) -> None:
     """
-    Display results in human-readable text format.
+    Display results in human-readable text format using TextReporter.
     """
 
-    output_lines = []
+    # Create text reporter with color settings
+    use_color = not args.no_color
+    reporter = TextReporter(use_color=use_color, width=80)
 
-    # Header
-    output_lines.append("=" * 80)
-    output_lines.append("ENVIRONMENT HARMONIZER - Diagnostic Report")
-    output_lines.append("=" * 80)
-    output_lines.append("")
-
-    # Project info
-    output_lines.append(f"Project Path: {env_status.project_path}")
-    output_lines.append("")
-
-    # OS info
-    output_lines.append("[OS ENVIRONMENT]")
-    output_lines.append(f"  Type: {env_status.os_type.value}")
-    output_lines.append(f"  Version: {env_status.os_version}")
-    output_lines.append("")
-
-    # Python info
-    output_lines.append("[PYTHON ENVIRONMENT]")
-    output_lines.append(f"  Version: {env_status.python_version}")
-    output_lines.append(f"  Executable: {env_status.python_executable}")
-    output_lines.append("")
-
-    # Virtual environment info
-    output_lines.append("[VIRTUAL ENVIRONMENT]")
-    output_lines.append(f"  Type: {env_status.venv_type.value}")
-    output_lines.append(f"  Active: {'Yes' if env_status.venv_active else 'No'}")
-    if env_status.venv_path:
-        output_lines.append(f"  Path: {env_status.venv_path}")
-    output_lines.append("")
-
-    # Issues
-    if env_status.issues:
-        output_lines.append(f"[DETECTED ISSUES] ({len(env_status.issues)} total)")
-        output_lines.append("")
-
-        for issue in env_status.issues:
-            severity_symbol = {
-                IssueSeverity.ERROR: "✗",
-                IssueSeverity.WARNING: "⚠",
-                IssueSeverity.INFO: "ℹ",
-            }
-            symbol = severity_symbol.get(issue.severity, "•")
-
-            output_lines.append(f"  [{issue.severity.value.upper()}] {issue.message}")
-            if issue.fixable:
-                output_lines.append(f"    Fixable: Yes")
-                if issue.fix_command:
-                    output_lines.append(f"    Fix: {issue.fix_command}")
-            else:
-                output_lines.append(f"    Fixable: No")
-            output_lines.append("")
-
-        # Summary
-        summary = env_status.issue_summary()
-        output_lines.append("=" * 80)
-        output_lines.append(
-            f"Summary: {summary['errors']} error(s), "
-            f"{summary['warnings']} warning(s), {summary['info']} info"
-        )
-
-        fixable = len(env_status.get_fixable_issues())
-        if fixable > 0:
-            output_lines.append(f"Run with --fix to apply {fixable} automated fix(es)")
-    else:
-        output_lines.append("[NO ISSUES DETECTED]")
-        output_lines.append("  ✓ Environment appears to be properly configured")
-
-    output_lines.append("=" * 80)
+    # Generate report
+    report_text = reporter.generate(env_status)
 
     # Output to file or stdout
-    output_text = "\n".join(output_lines)
-
     if args.output:
-        Path(args.output).write_text(output_text)
+        Path(args.output).write_text(report_text)
         print(f"Report written to: {args.output}")
     else:
-        print(output_text)
+        print(report_text)
 
 
 def _display_json(env_status: EnvironmentStatus, args: argparse.Namespace) -> None:
     """
-    Display results in JSON format.
+    Display results in JSON format using JSONReporter.
     """
 
-    import json
-    from dataclasses import asdict
+    # Create JSON reporter
+    reporter = JSONReporter(indent=2, include_metadata=True)
 
-    # Convert dataclass to dict (handling enums)
-    status_dict = asdict(env_status)
+    # Generate JSON report
+    json_output = reporter.generate(env_status)
 
-    # Convert enums to their string values
-    status_dict["os_type"] = env_status.os_type.value
-    status_dict["venv_type"] = env_status.venv_type.value
-
-    # Convert issues
-    status_dict["issues"] = [
-        {
-            "severity": issue.severity.value,
-            "category": issue.category,
-            "message": issue.message,
-            "fixable": issue.fixable,
-            "fix_command": issue.fix_command,
-        }
-        for issue in env_status.issues
-    ]
-
-    # Add summary
-    status_dict["summary"] = env_status.issue_summary()
-
-    json_output = json.dumps(status_dict, indent=2)
-
+    # Output to file or stdout
     if args.output:
         Path(args.output).write_text(json_output)
         print(f"JSON report written to: {args.output}")
