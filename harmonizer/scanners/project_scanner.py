@@ -33,6 +33,9 @@ from harmonizer.detectors.config_detector import (
     detect_config_issues,
 )
 from harmonizer.detectors.quirks_detector import detect_platform_quirks
+from harmonizer.utils.progress import ProgressReporter
+from harmonizer.utils.logging_config import HarmonizerLogger
+from harmonizer.utils.performance import get_global_monitor
 
 
 class ProjectScanner:
@@ -59,13 +62,14 @@ class ProjectScanner:
         verbose: Whether to print verbose output during scanning
     """
 
-    def __init__(self, project_path: str = ".", verbose: bool = False):
+    def __init__(self, project_path: str = ".", verbose: bool = False, use_color: bool = True):
         """
         Initialize the project scanner.
 
         Args:
             project_path: Path to project directory (default: current directory)
             verbose: Enable verbose output during scanning
+            use_color: Enable colored output (default: True)
 
         Raises:
             ValueError: If project_path doesn't exist or isn't a directory
@@ -73,13 +77,20 @@ class ProjectScanner:
 
         self.project_path = Path(project_path).resolve()
         self.verbose = verbose
+        self.progress = ProgressReporter(use_color=use_color, verbose=verbose)
+        self.logger = HarmonizerLogger.get_logger(__name__)
+        self.perf_monitor = get_global_monitor()
 
         # Validate project path
         if not self.project_path.exists():
+            self.logger.error(f"Project path does not exist: {project_path}")
             raise ValueError(f"Project path does not exist: {project_path}")
 
         if not self.project_path.is_dir():
+            self.logger.error(f"Project path is not a directory: {project_path}")
             raise ValueError(f"Project path is not a directory: {project_path}")
+
+        self.logger.info(f"ProjectScanner initialized for: {self.project_path}")
 
     def scan(self, checks: Optional[list] = None) -> EnvironmentStatus:
         """
@@ -156,15 +167,25 @@ class ProjectScanner:
         - os_version
         """
 
-        if self.verbose:
-            print("Detecting operating system...")
+        self.progress.start_step("Detecting operating system")
+        self.perf_monitor.start_timer("scan_os")
+        self.logger.debug("Starting OS detection")
 
-        env_status.os_type = detect_os_type()
-        env_status.os_version = get_os_version()
+        try:
+            env_status.os_type = detect_os_type()
+            env_status.os_version = get_os_version()
 
-        if self.verbose:
-            print(f"  OS: {env_status.os_type.value}")
-            print(f"  Version: {env_status.os_version}")
+            self.logger.info(f"Detected OS: {env_status.os_type.value} - {env_status.os_version}")
+            self.progress.complete_step(f"OS: {env_status.os_type.value} ({env_status.os_version})")
+            self.progress.verbose(f"OS Type: {env_status.os_type.value}")
+            self.progress.verbose(f"OS Version: {env_status.os_version}")
+
+        except Exception as e:
+            self.logger.error(f"Error during OS detection: {e}", exc_info=True)
+            raise
+        finally:
+            duration = self.perf_monitor.stop_timer("scan_os")
+            self.logger.debug(f"OS detection completed in {duration:.3f}s" if duration else "OS detection timer not found")
 
     def _scan_python(self, env_status: EnvironmentStatus) -> None:
         """
@@ -176,22 +197,20 @@ class ProjectScanner:
         - Issues related to Python version mismatches
         """
 
-        if self.verbose:
-            print("Detecting Python version...")
+        self.progress.start_step("Detecting Python version")
 
         py_info = detect_python_version()
         env_status.python_version = py_info["version"]
         env_status.python_executable = py_info["executable"]
 
-        if self.verbose:
-            print(f"  Version: {env_status.python_version}")
-            print(f"  Executable: {env_status.python_executable}")
+        self.progress.complete_step(f"Python {env_status.python_version} detected")
+        self.progress.verbose(f"Python Version: {env_status.python_version}")
+        self.progress.verbose(f"Python Executable: {env_status.python_executable}")
 
         # Check for Python version compatibility
         required_version = get_project_python_requirement(str(self.project_path))
         if required_version:
-            if self.verbose:
-                print(f"  Required version: {required_version}")
+            self.progress.verbose(f"Project requires Python {required_version}")
 
             compatible, issue = check_version_compatibility(
                 env_status.python_version, required_version
@@ -199,8 +218,7 @@ class ProjectScanner:
 
             if issue:
                 env_status.issues.append(issue)
-                if self.verbose:
-                    print(f"  ⚠ Version mismatch detected")
+                self.progress.warning(f"Python version mismatch: current {env_status.python_version}, required {required_version}")
 
     def _scan_venv(self, env_status: EnvironmentStatus) -> None:
         """
@@ -213,8 +231,7 @@ class ProjectScanner:
         - Issues related to inactive virtual environments
         """
 
-        if self.verbose:
-            print("Detecting virtual environment...")
+        self.progress.start_step("Detecting virtual environment")
 
         venv_info = detect_venv_type()
         env_status.venv_type = venv_info["type"]
@@ -223,11 +240,12 @@ class ProjectScanner:
         if venv_info.get("path"):
             env_status.venv_path = venv_info["path"]
 
-        if self.verbose:
-            print(f"  Type: {env_status.venv_type.value}")
-            print(f"  Active: {env_status.venv_active}")
-            if env_status.venv_path:
-                print(f"  Path: {env_status.venv_path}")
+        status_str = "active" if env_status.venv_active else "not active"
+        self.progress.complete_step(f"Virtual Env: {env_status.venv_type.value} ({status_str})")
+        self.progress.verbose(f"Venv Type: {env_status.venv_type.value}")
+        self.progress.verbose(f"Venv Active: {env_status.venv_active}")
+        if env_status.venv_path:
+            self.progress.verbose(f"Venv Path: {env_status.venv_path}")
 
         # Check if virtual environment should be active but isn't
         if env_status.venv_type != VenvType.NONE and not env_status.venv_active:
@@ -238,9 +256,7 @@ class ProjectScanner:
                 fixable=True,
                 fix_command=f"Activate virtual environment at {venv_info.get('path', 'unknown')}",
             )
-
-            if self.verbose:
-                print(f"  ⚠ Virtual environment is not active")
+            self.progress.warning(f"Virtual environment is not active")
 
     def _scan_dependencies(self, env_status: EnvironmentStatus) -> None:
         """

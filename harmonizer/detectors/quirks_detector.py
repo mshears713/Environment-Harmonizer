@@ -27,6 +27,7 @@ from pathlib import Path
 from typing import List, Dict, Optional
 from harmonizer.models import OSType, Issue, IssueSeverity
 from harmonizer.detectors.os_detector import detect_os_type
+from harmonizer.utils.subprocess_utils import run_command_safe
 
 
 def detect_platform_quirks(project_path: str, os_type: OSType) -> List[Issue]:
@@ -333,17 +334,18 @@ def _check_git_line_endings(project_path: Path) -> Optional[Issue]:
     if not git_dir.exists():
         return None  # Not a git repository
 
+    # Note: run_command_safe doesn't support cwd parameter, so we need to use a workaround
+    import os
+    old_cwd = os.getcwd()
     try:
-        result = subprocess.run(
+        os.chdir(str(project_path))
+        success, stdout, _ = run_command_safe(
             ["git", "config", "--get", "core.autocrlf"],
-            cwd=str(project_path),
-            capture_output=True,
-            text=True,
-            timeout=2,
+            timeout=2
         )
 
-        if result.returncode == 0:
-            autocrlf_value = result.stdout.strip().lower()
+        if success:
+            autocrlf_value = stdout.strip().lower()
 
             if autocrlf_value == "true":
                 return Issue(
@@ -355,9 +357,8 @@ def _check_git_line_endings(project_path: Path) -> Optional[Issue]:
                     fixable=True,
                     fix_command="git config --global core.autocrlf input",
                 )
-
-    except (subprocess.SubprocessError, FileNotFoundError):
-        pass
+    finally:
+        os.chdir(old_cwd)
 
     return None
 

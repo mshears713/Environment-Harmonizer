@@ -25,6 +25,7 @@ import subprocess
 from typing import Tuple
 
 from harmonizer.models import OSType
+from harmonizer.utils.subprocess_utils import run_command_safe
 
 
 def detect_os_type() -> OSType:
@@ -231,23 +232,13 @@ def _get_linux_distribution() -> str:
         pass
 
     # Try using lsb_release command if available
-    try:
-        result = subprocess.run(
-            ["lsb_release", "-d"],
-            capture_output=True,
-            text=True,
-            timeout=2,
-        )
+    success, stdout, _ = run_command_safe(["lsb_release", "-d"], timeout=2)
 
-        if result.returncode == 0:
-            # Output format: "Description:\tUbuntu 22.04.1 LTS"
-            output = result.stdout.strip()
-            if ":" in output:
-                return output.split(":", 1)[1].strip()
-
-    except (subprocess.SubprocessError, FileNotFoundError):
-        # lsb_release not available
-        pass
+    if success:
+        # Output format: "Description:\tUbuntu 22.04.1 LTS"
+        output = stdout.strip()
+        if ":" in output:
+            return output.split(":", 1)[1].strip()
 
     # No distribution information found
     return ""

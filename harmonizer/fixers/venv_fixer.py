@@ -34,6 +34,7 @@ import platform
 
 from harmonizer.fixers.base_fixer import BaseFixer, FixResult
 from harmonizer.models import EnvironmentStatus, VenvType, IssueSeverity
+from harmonizer.utils.subprocess_utils import run_command_safe
 
 
 class VenvFixer(BaseFixer):
@@ -189,34 +190,20 @@ class VenvFixer(BaseFixer):
         # Actually create the venv
         self._log(f"Creating virtual environment at: {venv_path}")
 
-        try:
-            result = subprocess.run(
-                command, capture_output=True, text=True, timeout=60, check=False
-            )
+        success, stdout, stderr = run_command_safe(command, timeout=60)
 
-            if result.returncode == 0:
-                return FixResult(
-                    success=True,
-                    message=f"Created virtual environment at: {venv_path}",
-                    command=str(venv_path),
-                    dry_run=False,
-                )
-            else:
-                error_msg = result.stderr.strip() if result.stderr else "Unknown error"
-                return FixResult(
-                    success=False,
-                    message=f"Failed to create venv: {error_msg}",
-                    dry_run=False,
-                )
-
-        except subprocess.TimeoutExpired:
+        if success:
             return FixResult(
-                success=False, message="Virtual environment creation timed out", dry_run=False
+                success=True,
+                message=f"Created virtual environment at: {venv_path}",
+                command=str(venv_path),
+                dry_run=False,
             )
-        except Exception as e:
+        else:
+            error_msg = stderr.strip() if stderr else "Unknown error"
             return FixResult(
                 success=False,
-                message=f"Error creating virtual environment: {str(e)}",
+                message=f"Failed to create venv: {error_msg}",
                 dry_run=False,
             )
 

@@ -24,6 +24,8 @@ from pathlib import Path
 from typing import List, Dict, Optional, Tuple
 import re
 
+from harmonizer.utils.subprocess_utils import run_command_safe
+
 
 def scan_dependencies(project_path: str) -> Dict[str, any]:
     """
@@ -370,24 +372,20 @@ def get_installed_packages() -> List[str]:
 
     packages = []
 
-    try:
-        # Run pip list --format=freeze to get package names
-        result = subprocess.run(
-            [sys.executable, "-m", "pip", "list", "--format=freeze"],
-            capture_output=True,
-            text=True,
-            timeout=10,
-        )
+    # Run pip list --format=freeze to get package names
+    success, stdout, _ = run_command_safe(
+        [sys.executable, "-m", "pip", "list", "--format=freeze"],
+        timeout=10
+    )
 
-        if result.returncode == 0:
-            for line in result.stdout.splitlines():
-                line = line.strip()
-                if line and "==" in line:
-                    # Extract package name (before ==)
-                    package = line.split("==")[0].strip().lower()
-                    packages.append(package)
-
-    except (subprocess.SubprocessError, subprocess.TimeoutExpired):
+    if success:
+        for line in stdout.splitlines():
+            line = line.strip()
+            if line and "==" in line:
+                # Extract package name (before ==)
+                package = line.split("==")[0].strip().lower()
+                packages.append(package)
+    else:
         # If pip list fails, try using importlib.metadata (Python 3.8+)
         try:
             from importlib import metadata
@@ -451,17 +449,11 @@ def check_package_installed(package_name: str) -> bool:
     This is useful for targeted checks during fix operations.
     """
 
-    try:
-        result = subprocess.run(
-            [sys.executable, "-m", "pip", "show", package_name],
-            capture_output=True,
-            text=True,
-            timeout=5,
-        )
-        return result.returncode == 0
-
-    except (subprocess.SubprocessError, subprocess.TimeoutExpired):
-        return False
+    success, _, _ = run_command_safe(
+        [sys.executable, "-m", "pip", "show", package_name],
+        timeout=5
+    )
+    return success
 
 
 def get_package_version(package_name: str) -> Optional[str]:
@@ -480,22 +472,16 @@ def get_package_version(package_name: str) -> Optional[str]:
         2.28.1
     """
 
-    try:
-        result = subprocess.run(
-            [sys.executable, "-m", "pip", "show", package_name],
-            capture_output=True,
-            text=True,
-            timeout=5,
-        )
+    success, stdout, _ = run_command_safe(
+        [sys.executable, "-m", "pip", "show", package_name],
+        timeout=5
+    )
 
-        if result.returncode == 0:
-            # Parse output for Version: line
-            for line in result.stdout.splitlines():
-                if line.startswith("Version:"):
-                    return line.split(":", 1)[1].strip()
-
-    except (subprocess.SubprocessError, subprocess.TimeoutExpired):
-        pass
+    if success:
+        # Parse output for Version: line
+        for line in stdout.splitlines():
+            if line.startswith("Version:"):
+                return line.split(":", 1)[1].strip()
 
     return None
 
