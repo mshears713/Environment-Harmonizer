@@ -362,6 +362,75 @@ def _check_git_line_endings(project_path: Path) -> Optional[Issue]:
     return None
 
 
+def analyze_path_env() -> Dict[str, any]:
+    """
+    Analyze the PATH environment variable in detail.
+
+    Returns:
+        Dictionary with PATH analysis including:
+        - total_entries: Number of PATH entries
+        - linux_paths: List of Linux paths
+        - windows_paths: List of Windows paths
+        - duplicates: List of duplicate entries
+        - non_existent: List of paths that don't exist
+        - windows_executables_found: List of Windows .exe in PATH
+
+    EDUCATIONAL NOTE - PATH Environment Variable:
+    PATH tells the shell where to look for executables. In WSL:
+    - Linux paths: /usr/bin, /usr/local/bin, etc.
+    - Windows paths: /mnt/c/Windows, /mnt/c/Program Files, etc.
+
+    Order matters! First match wins, so:
+    - /usr/bin/python before /mnt/c/Python/python.exe → uses Linux Python
+    - /mnt/c/Python before /usr/bin → uses Windows Python (BAD in WSL!)
+    """
+
+    path = os.environ.get("PATH", "")
+    entries = path.split(":")
+
+    linux_paths = []
+    windows_paths = []
+    duplicates = []
+    non_existent = []
+    seen = set()
+
+    for entry in entries:
+        # Check for duplicates
+        if entry in seen:
+            duplicates.append(entry)
+        else:
+            seen.add(entry)
+
+        # Classify as Linux or Windows path
+        if entry.startswith("/mnt/"):
+            windows_paths.append(entry)
+        else:
+            linux_paths.append(entry)
+
+        # Check if path exists
+        if not Path(entry).exists():
+            non_existent.append(entry)
+
+    # Find common Windows executables in PATH
+    windows_executables = []
+    for wp in windows_paths[:10]:  # Check first 10 Windows paths
+        wp_path = Path(wp)
+        if wp_path.exists():
+            exe_files = list(wp_path.glob("*.exe"))
+            for exe in exe_files[:5]:  # First 5 exe files
+                windows_executables.append(f"{exe.name} in {wp}")
+
+    return {
+        "total_entries": len(entries),
+        "linux_paths": linux_paths,
+        "windows_paths": windows_paths,
+        "duplicates": duplicates,
+        "non_existent": non_existent,
+        "windows_executables_found": windows_executables[:10],
+        "linux_first": len(linux_paths) > 0 and (not windows_paths or linux_paths[0] < windows_paths[0] if windows_paths else True),
+    }
+
+
 def _check_wsl_path_pollution() -> Optional[Issue]:
     """
     Check if Windows programs are polluting the WSL PATH.
@@ -378,18 +447,29 @@ def _check_wsl_path_pollution() -> Optional[Issue]:
     appendWindowsPath = false
     """
 
-    path = os.environ.get("PATH", "")
+    path_analysis = analyze_path_env()
 
-    # Count Windows paths in PATH (/mnt/c/...)
-    windows_paths = [p for p in path.split(":") if p.startswith("/mnt/")]
+    windows_paths = path_analysis["windows_paths"]
+    total_entries = path_analysis["total_entries"]
 
     if len(windows_paths) > 5:
+        windows_percentage = (len(windows_paths) / total_entries * 100) if total_entries > 0 else 0
+
+        details = f"WSL PATH contains {len(windows_paths)} Windows paths " \
+                  f"({windows_percentage:.1f}% of {total_entries} total entries)"
+
+        # Check if Windows paths come before Linux paths (problematic)
+        if windows_paths and path_analysis["linux_paths"]:
+            first_windows_idx = next((i for i, p in enumerate(os.environ.get("PATH", "").split(":")) if p.startswith("/mnt/")), None)
+            first_linux_idx = next((i for i, p in enumerate(os.environ.get("PATH", "").split(":")) if not p.startswith("/mnt/")), None)
+
+            if first_windows_idx is not None and first_linux_idx is not None and first_windows_idx < first_linux_idx:
+                details += ". WARNING: Windows paths appear BEFORE Linux paths - may use Windows executables instead of Linux!"
+
         return Issue(
             severity=IssueSeverity.INFO,
             category="wsl_path",
-            message=f"WSL PATH contains {len(windows_paths)} Windows paths - "
-                    "this can cause confusion and slow command resolution. "
-                    "Consider disabling with /etc/wsl.conf",
+            message=f"{details}. Consider disabling Windows PATH in /etc/wsl.conf for cleaner environment",
             fixable=False,
         )
 

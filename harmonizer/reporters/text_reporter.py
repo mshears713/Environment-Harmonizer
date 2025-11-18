@@ -111,6 +111,9 @@ class TextReporter:
         # Issues section
         lines.extend(self._generate_issues_section(env_status))
 
+        # Fixable Issues Highlight section
+        lines.extend(self._generate_fixable_summary(env_status))
+
         # Footer with summary
         lines.extend(self._generate_footer(env_status))
 
@@ -298,6 +301,78 @@ class TextReporter:
         else:
             lines.append(f"    Fixable: No")
 
+        lines.append("")
+
+        return lines
+
+    def _generate_fixable_summary(self, env_status: EnvironmentStatus) -> list:
+        """
+        Generate a prominent summary of fixable issues.
+
+        This section appears after the detailed issues list and provides
+        a quick reference for what can be automatically fixed.
+
+        EDUCATIONAL NOTE - Actionable Reporting:
+        Good reports not only identify problems but also clearly indicate
+        what can be done about them. By grouping fixable issues together:
+        1. Users quickly see what can be automated
+        2. Clear call-to-action (run with --fix)
+        3. Shows fix commands for manual execution if preferred
+        """
+
+        fixable_issues = env_status.get_fixable_issues()
+
+        if not fixable_issues:
+            return []
+
+        lines = []
+        separator = "-" * self.width
+
+        lines.append(separator)
+        lines.append(self._colorize(
+            f"[FIXABLE ISSUES] - {len(fixable_issues)} issue(s) can be automatically fixed",
+            "cyan",
+            bold=True
+        ))
+        lines.append("")
+
+        # Group fixable issues by category for better organization
+        by_category = {}
+        for issue in fixable_issues:
+            if issue.category not in by_category:
+                by_category[issue.category] = []
+            by_category[issue.category].append(issue)
+
+        # Display fixable issues by category
+        for category, issues in sorted(by_category.items()):
+            category_name = category.replace("_", " ").title()
+            lines.append(f"  {self._colorize('●', 'green')} {category_name} ({len(issues)} fix{'es' if len(issues) > 1 else ''}):")
+
+            for issue in issues:
+                # Show the issue message
+                severity_icon = {
+                    IssueSeverity.ERROR: "✗",
+                    IssueSeverity.WARNING: "⚠",
+                    IssueSeverity.INFO: "ℹ",
+                }.get(issue.severity, "•")
+
+                lines.append(f"      {severity_icon} {issue.message}")
+
+                # Show fix command if available
+                if issue.fix_command:
+                    lines.append(f"        Fix: {self._colorize(issue.fix_command, 'cyan')}")
+
+            lines.append("")
+
+        # Call to action
+        lines.append(self._colorize(
+            "  💡 TIP: Run with --fix to apply all automated fixes",
+            "cyan"
+        ))
+        lines.append(self._colorize(
+            "  💡 TIP: Run with --fix --dry-run to preview changes first",
+            "cyan"
+        ))
         lines.append("")
 
         return lines

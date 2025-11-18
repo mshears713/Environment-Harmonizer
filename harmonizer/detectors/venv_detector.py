@@ -16,6 +16,7 @@ Common Virtual Environment Types:
 2. conda: Anaconda/Miniconda (handles Python + non-Python packages)
 3. pipenv: Combines pip and virtualenv with Pipfile
 4. poetry: Modern dependency management with pyproject.toml
+5. pipx: Installs Python CLI applications in isolated environments
 """
 
 import sys
@@ -75,6 +76,16 @@ def detect_venv_type() -> Dict[str, any]:
             "active": conda_info["active"],
             "path": conda_info["path"],
             "name": conda_info["name"],
+        }
+
+    # Check for Pipx environment
+    pipx_info = _detect_pipx()
+    if pipx_info["detected"]:
+        return {
+            "type": VenvType.PIPX,
+            "active": pipx_info["active"],
+            "path": pipx_info["path"],
+            "name": pipx_info["name"],
         }
 
     # Check for Poetry environment
@@ -165,6 +176,112 @@ def _detect_conda() -> Dict[str, any]:
             return {"detected": False, "active": False, "path": None, "name": None}
     except (subprocess.SubprocessError, FileNotFoundError):
         pass
+
+    return {"detected": False, "active": False, "path": None, "name": None}
+
+
+def _detect_pipx() -> Dict[str, any]:
+    """
+    Detect Pipx virtual environment.
+
+    Returns:
+        Dictionary with detection results
+
+    EDUCATIONAL NOTE - Pipx:
+    Pipx is a tool for installing and running Python applications in isolated
+    environments. Unlike pip which installs packages into the current environment,
+    pipx creates a separate virtual environment for each application.
+
+    Key characteristics:
+    - Each application gets its own isolated environment
+    - Applications are globally available as commands
+    - Prevents dependency conflicts between tools
+    - Default installation location: ~/.local/pipx/venvs/
+
+    Pipx is ideal for:
+    - CLI tools (black, flake8, pytest, etc.)
+    - Development utilities
+    - System-wide Python applications
+
+    Not suitable for:
+    - Project dependencies
+    - Libraries imported in code
+    - Development environments for projects
+
+    Detection Strategy:
+    1. Check PIPX_HOME and PIPX_BIN_DIR environment variables
+    2. Look for pipx installation via subprocess
+    3. Check if current Python is in a pipx venv directory
+    4. Scan for pipx venv directories in standard locations
+    """
+
+    # Check for PIPX_HOME environment variable
+    pipx_home = os.environ.get("PIPX_HOME")
+    pipx_bin_dir = os.environ.get("PIPX_BIN_DIR")
+
+    # Check if we're currently running in a pipx environment
+    # Pipx venvs are typically in ~/.local/pipx/venvs/<package-name>/
+    if "pipx" in sys.prefix and "venvs" in sys.prefix:
+        # Extract package name from path
+        # Example: /home/user/.local/pipx/venvs/black/
+        parts = Path(sys.prefix).parts
+        if "venvs" in parts:
+            venv_idx = parts.index("venvs")
+            if len(parts) > venv_idx + 1:
+                package_name = parts[venv_idx + 1]
+                return {
+                    "detected": True,
+                    "active": True,
+                    "path": sys.prefix,
+                    "name": package_name,
+                }
+
+    # Check if pipx is installed and has any packages
+    try:
+        result = subprocess.run(
+            ["pipx", "list"],
+            capture_output=True,
+            text=True,
+            timeout=3,
+        )
+        if result.returncode == 0 and result.stdout:
+            # Pipx is installed, but we're not in a pipx venv
+            # This is informational - not an active environment
+            return {"detected": False, "active": False, "path": None, "name": None}
+    except (subprocess.SubprocessError, FileNotFoundError):
+        pass
+
+    # Check standard pipx home directory
+    if not pipx_home:
+        # Default pipx home locations
+        home = Path.home()
+        default_pipx_homes = [
+            home / ".local" / "pipx",
+            home / ".pipx",
+        ]
+
+        for pipx_dir in default_pipx_homes:
+            if pipx_dir.exists():
+                pipx_home = str(pipx_dir)
+                break
+
+    # If we found pipx home, check if current environment is a pipx venv
+    if pipx_home:
+        pipx_venvs = Path(pipx_home) / "venvs"
+        if pipx_venvs.exists():
+            # Check if sys.prefix is under pipx venvs directory
+            try:
+                rel_path = Path(sys.prefix).relative_to(pipx_venvs)
+                package_name = rel_path.parts[0] if rel_path.parts else None
+                return {
+                    "detected": True,
+                    "active": True,
+                    "path": sys.prefix,
+                    "name": package_name,
+                }
+            except ValueError:
+                # sys.prefix is not under pipx_venvs
+                pass
 
     return {"detected": False, "active": False, "path": None, "name": None}
 
@@ -433,6 +550,161 @@ def get_venv_python_executable(venv_path: str) -> Optional[str]:
         return str(windows_python)
 
     return None
+
+
+def verify_venv_integrity(venv_path: str) -> Dict[str, any]:
+    """
+    Verify virtual environment integrity using subprocess checks.
+
+    Args:
+        venv_path: Path to virtual environment directory
+
+    Returns:
+        Dictionary with verification results:
+            - valid: Boolean indicating if venv is valid
+            - python_works: Python executable runs
+            - pip_works: pip is available
+            - python_version: Detected Python version
+            - issues: List of issues found
+
+    EDUCATIONAL NOTE - Virtual Environment Verification:
+    Beyond checking for pyvenv.cfg, we should verify the venv actually works:
+    1. Python executable exists and runs
+    2. pip is installed and functional
+    3. Python version is accessible
+    4. Environment is not corrupted
+
+    A venv directory might exist but be broken due to:
+    - Moved from another location (absolute paths in scripts)
+    - Corrupted installation
+    - Missing system libraries
+    - Incompatible Python version
+    """
+
+    venv_dir = Path(venv_path)
+    results = {
+        "valid": False,
+        "python_works": False,
+        "pip_works": False,
+        "python_version": None,
+        "issues": [],
+    }
+
+    # Find Python executable
+    python_exe = get_venv_python_executable(str(venv_dir))
+    if not python_exe:
+        results["issues"].append("Python executable not found in venv")
+        return results
+
+    # Test if Python runs
+    try:
+        result = subprocess.run(
+            [python_exe, "--version"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+
+        if result.returncode == 0:
+            results["python_works"] = True
+            # Parse version from output (e.g., "Python 3.10.6")
+            version_output = result.stdout.strip() or result.stderr.strip()
+            if "Python " in version_output:
+                results["python_version"] = version_output.replace("Python ", "").strip()
+        else:
+            results["issues"].append("Python executable exists but fails to run")
+
+    except subprocess.TimeoutExpired:
+        results["issues"].append("Python executable timed out")
+    except Exception as e:
+        results["issues"].append(f"Error running Python: {str(e)}")
+
+    # Test if pip works
+    if results["python_works"]:
+        try:
+            result = subprocess.run(
+                [python_exe, "-m", "pip", "--version"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+                check=False,
+            )
+
+            if result.returncode == 0:
+                results["pip_works"] = True
+            else:
+                results["issues"].append("pip is not available in venv")
+
+        except subprocess.TimeoutExpired:
+            results["issues"].append("pip check timed out")
+        except Exception as e:
+            results["issues"].append(f"Error checking pip: {str(e)}")
+
+    # Overall validity
+    results["valid"] = results["python_works"] and results["pip_works"]
+
+    return results
+
+
+def verify_venv_active_subprocess() -> Dict[str, any]:
+    """
+    Verify virtual environment activation using subprocess checks.
+
+    Returns:
+        Dictionary with verification results:
+            - active: Boolean indicating if venv is active
+            - venv_python: Path to venv Python if active
+            - system_python: Path to system Python
+            - in_venv: Whether currently in venv (sys.prefix check)
+
+    EDUCATIONAL NOTE - Subprocess Verification:
+    We can verify venv activation by running subprocess commands:
+    1. `which python` or `where python` - shows which Python will be used
+    2. Compare with sys.executable - should match if activated
+    3. Check if pip points to venv - `python -m pip --version`
+
+    This is more robust than just checking environment variables because:
+    - Shows what will actually be used
+    - Catches PATH issues
+    - Verifies the complete activation chain
+    """
+
+    results = {
+        "active": False,
+        "venv_python": None,
+        "system_python": None,
+        "in_venv": sys.prefix != sys.base_prefix,
+    }
+
+    # Find which python will be used
+    try:
+        # Use 'which' on Unix-like, 'where' on Windows
+        which_cmd = "which" if os.name != "nt" else "where"
+
+        result = subprocess.run(
+            [which_cmd, "python3" if os.name != "nt" else "python"],
+            capture_output=True,
+            text=True,
+            timeout=3,
+            check=False,
+        )
+
+        if result.returncode == 0:
+            python_path = result.stdout.strip().split("\n")[0]  # First result
+            results["venv_python"] = python_path
+
+            # Check if it's a venv Python (contains venv/bin or venv/Scripts)
+            if "venv" in python_path.lower() or "env" in python_path.lower():
+                results["active"] = True
+
+    except (subprocess.TimeoutExpired, FileNotFoundError, Exception):
+        pass
+
+    # Get system Python
+    results["system_python"] = sys.base_prefix
+
+    return results
 
 
 def get_venv_activation_command(
