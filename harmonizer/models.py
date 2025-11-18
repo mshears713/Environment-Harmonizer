@@ -64,6 +64,7 @@ class VenvType(Enum):
     - conda: Anaconda/Miniconda environments (includes non-Python packages)
     - pipenv: Combines pip and virtualenv with Pipfile for dependency management
     - poetry: Modern dependency management with pyproject.toml
+    - pipx: Installs Python CLI tools in isolated environments (one tool per venv)
     - none: No virtual environment detected
     """
 
@@ -71,6 +72,7 @@ class VenvType(Enum):
     CONDA = "conda"
     PIPENV = "pipenv"
     POETRY = "poetry"
+    PIPX = "pipx"
     NONE = "none"
 
 

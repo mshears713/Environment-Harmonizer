@@ -378,6 +378,122 @@ def _display_json(env_status: EnvironmentStatus, args: argparse.Namespace) -> No
         print(json_output)
 
 
+def apply_fixes(env_status: EnvironmentStatus, args: argparse.Namespace) -> List:
+    """
+    Apply automated fixes to detected issues.
+
+    Args:
+        env_status: Environment status with detected issues
+        args: Parsed arguments (contains fix options)
+
+    Returns:
+        List of FixResult objects from all fixers
+
+    EDUCATIONAL NOTE - Fix Orchestration:
+    Fixes are applied in a specific order to handle dependencies:
+    1. Configuration files (needed for other operations)
+    2. Virtual environment (needed for package installation)
+    3. Dependencies (require active venv)
+
+    Each fixer checks if it can fix anything before running.
+    The --dry-run flag is passed through to all fixers.
+    """
+
+    from harmonizer.fixers import VenvFixer, DependencyFixer, ConfigFixer
+
+    all_results = []
+    dry_run = args.dry_run
+    auto_yes = args.yes
+
+    if dry_run:
+        print("\n" + "=" * 70)
+        print("DRY-RUN MODE: Previewing fixes without applying changes")
+        print("=" * 70)
+    else:
+        print("\n" + "=" * 70)
+        print("APPLYING FIXES")
+        print("=" * 70)
+
+    # Order matters: configs -> venv -> dependencies
+    fixer_classes = [
+        ("Configuration", ConfigFixer),
+        ("Virtual Environment", VenvFixer),
+        ("Dependencies", DependencyFixer),
+    ]
+
+    for name, FixerClass in fixer_classes:
+        fixer = FixerClass(env_status, verbose=args.verbose, auto_yes=auto_yes)
+
+        if fixer.can_fix():
+            print(f"\n[{name} Fixer]")
+            results = fixer.apply_fixes(dry_run=dry_run)
+            all_results.extend(results)
+        elif args.verbose:
+            print(f"\n[{name} Fixer]")
+            print(f"  No applicable fixes")
+
+    return all_results
+
+
+def display_fix_results(fix_results: List, args: argparse.Namespace) -> None:
+    """
+    Display results of fix operations.
+
+    Args:
+        fix_results: List of FixResult objects
+        args: Parsed arguments
+
+    EDUCATIONAL NOTE - User Feedback:
+    After running fixes, users need to know:
+    1. What succeeded and what failed
+    2. What they need to do manually
+    3. Whether it's safe to proceed
+
+    We provide:
+    - Summary of all fixes attempted
+    - Success/failure for each fix
+    - Manual steps if needed (e.g., venv activation)
+    """
+
+    print("\n" + "=" * 70)
+    print("FIX RESULTS SUMMARY")
+    print("=" * 70)
+
+    if not fix_results:
+        print("\nNo fixes were applied.")
+        return
+
+    # Count successes and failures
+    successes = [r for r in fix_results if r.success]
+    failures = [r for r in fix_results if not r.success]
+
+    # Display successful fixes
+    if successes:
+        print(f"\n✓ Successful fixes ({len(successes)}):")
+        for result in successes:
+            status = "[DRY-RUN] " if result.dry_run else ""
+            print(f"  {status}✓ {result.message}")
+
+    # Display failed fixes
+    if failures:
+        print(f"\n✗ Failed fixes ({len(failures)}):")
+        for result in failures:
+            print(f"  ✗ {result.message}")
+
+    # Summary
+    print("\n" + "-" * 70)
+    print(f"Total: {len(successes)} succeeded, {len(failures)} failed")
+
+    if args.dry_run:
+        print("\nThis was a DRY-RUN. No actual changes were made.")
+        print("Run without --dry-run to apply these fixes.")
+    else:
+        print("\nFixes have been applied.")
+        print("Re-run the scan to verify the environment is now harmonized.")
+
+    print("=" * 70)
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     """
     Main entry point for the CLI.
@@ -415,6 +531,13 @@ def main(argv: Optional[List[str]] = None) -> int:
 
         # Display results
         display_results(env_status, args)
+
+        # Apply fixes if --fix flag is set
+        if args.fix:
+            fix_results = apply_fixes(env_status, args)
+
+            # Display fix results
+            display_fix_results(fix_results, args)
 
         # Return exit code based on issues
         if env_status.has_errors():
