@@ -251,19 +251,59 @@ def validate_arguments(args: argparse.Namespace) -> None:
 
     # Validate dry-run requires fix
     if args.dry_run and not args.fix:
-        raise ValueError("--dry-run requires --fix flag")
+        raise ValueError(
+            "--dry-run requires --fix flag\n"
+            "Usage: harmonizer --fix --dry-run [path]"
+        )
 
     # Validate check and skip aren't used together
     if args.check and args.skip:
-        raise ValueError("Cannot use both --check and --skip")
+        raise ValueError(
+            "Cannot use both --check and --skip options\n"
+            "Use either --check to run specific checks, or --skip to exclude checks."
+        )
 
     # Validate project path exists
     project_path = Path(args.project_path)
     if not project_path.exists():
-        raise ValueError(f"Project path does not exist: {args.project_path}")
+        raise ValueError(
+            f"Project path does not exist: '{args.project_path}'\n"
+            f"Please provide a valid directory path.\n"
+            f"Example: harmonizer /path/to/project"
+        )
 
     if not project_path.is_dir():
-        raise ValueError(f"Project path is not a directory: {args.project_path}")
+        raise ValueError(
+            f"Project path is not a directory: '{args.project_path}'\n"
+            f"Please provide a path to a directory, not a file."
+        )
+
+    # Check read permissions
+    if not os.access(project_path, os.R_OK):
+        raise ValueError(
+            f"Cannot read project directory: '{args.project_path}'\n"
+            f"Permission denied. Check directory permissions."
+        )
+
+    # Validate check names if provided
+    if args.check:
+        valid_checks = {'os', 'python', 'venv', 'dependencies', 'config', 'quirks'}
+        invalid_checks = set(args.check) - valid_checks
+        if invalid_checks:
+            raise ValueError(
+                f"Invalid check names: {', '.join(invalid_checks)}\n"
+                f"Valid checks: {', '.join(sorted(valid_checks))}"
+            )
+
+    # Validate skip names if provided
+    if args.skip:
+        valid_checks = {'os', 'python', 'venv', 'dependencies', 'config', 'quirks'}
+        invalid_skips = set(args.skip) - valid_checks
+        if invalid_skips:
+            raise ValueError(
+                f"Invalid skip names: {', '.join(invalid_skips)}\n"
+                f"Valid checks: {', '.join(sorted(valid_checks))}"
+            )
 
 
 def run_scan(args: argparse.Namespace) -> EnvironmentStatus:
