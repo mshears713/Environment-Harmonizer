@@ -1,0 +1,15 @@
+# Environment Harmonizer - Core Dependencies
+#
+# This project uses primarily standard library modules to minimize external dependencies
+# and improve portability across different environments.
+#
+# All core functionality is built using Python 3.7+ standard library:
+# - argparse: CLI argument parsing
+# - pathlib: Filesystem path handling
+# - json: Configuration and report serialization
+# - platform: OS and system detection
+# - subprocess: External command execution
+# - dataclasses: Structured data modeling
+
+# Optional: Enhanced terminal output (uncomment if needed)
+# colorama>=0.4.6
