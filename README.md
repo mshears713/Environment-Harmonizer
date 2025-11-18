@@ -39,6 +39,54 @@ harmonizer --json --output report.json
 
 ---
 
+## Docker Quick Start (Windows, WSL, Linux, macOS)
+
+**The fastest way to get started!** Use Docker to run Environment Harmonizer without installing Python or dependencies.
+
+### Automated Setup
+
+**Windows (CMD/PowerShell):**
+```cmd
+# Using batch script (CMD)
+quickstart-windows.bat
+
+# Or using PowerShell
+.\quickstart-windows.ps1
+```
+
+**Linux / WSL / macOS:**
+```bash
+./quickstart.sh
+```
+
+### Manual Docker Usage
+
+**Build and run:**
+```bash
+# Build the image
+docker build -t environment-harmonizer:latest .
+
+# Scan current directory (Linux/WSL/macOS)
+docker run --rm -v "$(pwd)":/workspace environment-harmonizer:latest
+
+# Scan current directory (Windows CMD)
+docker run --rm -v "%cd%":/workspace environment-harmonizer:latest
+
+# Scan current directory (Windows PowerShell)
+docker run --rm -v "${PWD}:/workspace" environment-harmonizer:latest
+```
+
+**Using docker-compose:**
+```bash
+docker-compose run --rm harmonizer
+docker-compose run --rm harmonizer --verbose
+docker-compose run --rm harmonizer --fix --dry-run
+```
+
+For detailed Docker instructions, troubleshooting, and advanced usage, see **[QUICKSTART.md](QUICKSTART.md)**.
+
+---
+
 ## Installation
 
 ### From Source (Development)
