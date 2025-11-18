@@ -90,7 +90,9 @@ def fallback_os_detection() -> Dict[str, Any]:
             logger.warning(f"Could not get OS version: {e}")
             result["version"] = "Unknown"
 
-        logger.info(f"Fallback OS detection: {result['type'].value} ({result['version']})")
+        logger.info(
+            f"Fallback OS detection: {result['type'].value} ({result['version']})"
+        )
 
     except Exception as e:
         logger.error(f"Fallback OS detection failed: {e}")
@@ -127,12 +129,16 @@ def fallback_python_detection() -> Dict[str, Any]:
     result = {
         "version": version_str,
         "executable": sys.executable or "unknown",
-        "implementation": sys.implementation.name if hasattr(sys, 'implementation') else "unknown",
+        "implementation": (
+            sys.implementation.name if hasattr(sys, "implementation") else "unknown"
+        ),
         "confidence": "high",  # sys module is always reliable
         "method": "sys_module",
     }
 
-    logger.info(f"Fallback Python detection: {result['version']} at {result['executable']}")
+    logger.info(
+        f"Fallback Python detection: {result['version']} at {result['executable']}"
+    )
 
     return result
 
@@ -184,7 +190,9 @@ def fallback_venv_detection() -> Dict[str, Any]:
             # Check for common venv indicators
             if (venv_path / "pyvenv.cfg").exists():
                 result["type"] = VenvType.VIRTUALENV  # or VENV, hard to distinguish
-            elif "conda" in str(venv_path).lower() or (venv_path / "conda-meta").exists():
+            elif (
+                "conda" in str(venv_path).lower() or (venv_path / "conda-meta").exists()
+            ):
                 result["type"] = VenvType.CONDA
             elif ".poetry" in str(venv_path):
                 result["type"] = VenvType.POETRY
@@ -193,7 +201,9 @@ def fallback_venv_detection() -> Dict[str, Any]:
                 result["type"] = VenvType.VIRTUALENV
 
             result["confidence"] = "medium"
-            logger.info(f"Fallback venv detection: {result['type'].value} at {result['path']}")
+            logger.info(
+                f"Fallback venv detection: {result['type'].value} at {result['path']}"
+            )
         else:
             logger.info("Fallback venv detection: No virtual environment detected")
 

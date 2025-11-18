@@ -14,6 +14,7 @@ A good CLI should be:
 """
 
 import argparse
+import os
 import sys
 from pathlib import Path
 from typing import List, Optional
@@ -252,8 +253,7 @@ def validate_arguments(args: argparse.Namespace) -> None:
     # Validate dry-run requires fix
     if args.dry_run and not args.fix:
         raise ValueError(
-            "--dry-run requires --fix flag\n"
-            "Usage: harmonizer --fix --dry-run [path]"
+            "--dry-run requires --fix flag\n" "Usage: harmonizer --fix --dry-run [path]"
         )
 
     # Validate check and skip aren't used together
@@ -287,7 +287,7 @@ def validate_arguments(args: argparse.Namespace) -> None:
 
     # Validate check names if provided
     if args.check:
-        valid_checks = {'os', 'python', 'venv', 'dependencies', 'config', 'quirks'}
+        valid_checks = {"os", "python", "venv", "dependencies", "config", "quirks"}
         invalid_checks = set(args.check) - valid_checks
         if invalid_checks:
             raise ValueError(
@@ -297,7 +297,7 @@ def validate_arguments(args: argparse.Namespace) -> None:
 
     # Validate skip names if provided
     if args.skip:
-        valid_checks = {'os', 'python', 'venv', 'dependencies', 'config', 'quirks'}
+        valid_checks = {"os", "python", "venv", "dependencies", "config", "quirks"}
         invalid_skips = set(args.skip) - valid_checks
         if invalid_skips:
             raise ValueError(
@@ -570,7 +570,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     from harmonizer.utils.logging_config import HarmonizerLogger
 
     HarmonizerLogger.initialize(
-        log_level=args.log_level if hasattr(args, 'log_level') else "INFO",
+        log_level=args.log_level if hasattr(args, "log_level") else "INFO",
         enable_file_logging=True,
         enable_console_logging=False,  # We handle console output separately
     )
@@ -627,7 +627,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     except Exception as e:
         logger.error(f"Unexpected error: {e}", exc_info=True)
         print(f"Unexpected error: {e}", file=sys.stderr)
-        if hasattr(args, 'verbose') and args.verbose:
+        if hasattr(args, "verbose") and args.verbose:
             import traceback
 
             traceback.print_exc()

@@ -1,0 +1,7 @@
+# Project dependencies with Python version requirement
+
+# Specify minimum Python version
+# python_requires = ">=3.9"
+
+# Dependencies that may have version-specific features
+# (For this example, we keep it minimal)

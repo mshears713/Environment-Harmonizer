@@ -142,7 +142,9 @@ class HarmonizerLogger:
         # Add console handler
         if enable_console_logging:
             console_handler = logging.StreamHandler(sys.stderr)
-            console_handler.setLevel(logging.WARNING)  # Only warnings and errors to console
+            console_handler.setLevel(
+                logging.WARNING
+            )  # Only warnings and errors to console
             console_handler.setFormatter(console_formatter)
             root_logger.addHandler(console_handler)
 
@@ -226,6 +228,7 @@ class HarmonizerLogger:
             return 0
 
         import time
+
         current_time = time.time()
         cutoff_time = current_time - (days * 24 * 60 * 60)  # Convert days to seconds
 
@@ -362,6 +365,7 @@ class LogTimer:
     def __enter__(self):
         """Start timing when entering context."""
         import time
+
         self.start_time = time.perf_counter()
         self.logger.debug(f"{self.operation} started")
         return self
@@ -369,6 +373,7 @@ class LogTimer:
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Log elapsed time when exiting context."""
         import time
+
         elapsed = time.perf_counter() - self.start_time
         self.logger.info(f"{self.operation} completed in {elapsed:.3f}s")
         return False  # Don't suppress exceptions
@@ -408,6 +413,7 @@ if __name__ == "__main__":
 
     # Test timer context manager
     import time
+
     with LogTimer("example_operation", main_logger):
         time.sleep(0.1)
 

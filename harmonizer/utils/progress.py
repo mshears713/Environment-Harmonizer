@@ -28,29 +28,29 @@ class Color(Enum):
     """ANSI color codes for terminal output."""
 
     # Basic colors
-    BLACK = '\033[30m'
-    RED = '\033[31m'
-    GREEN = '\033[32m'
-    YELLOW = '\033[33m'
-    BLUE = '\033[34m'
-    MAGENTA = '\033[35m'
-    CYAN = '\033[36m'
-    WHITE = '\033[37m'
+    BLACK = "\033[30m"
+    RED = "\033[31m"
+    GREEN = "\033[32m"
+    YELLOW = "\033[33m"
+    BLUE = "\033[34m"
+    MAGENTA = "\033[35m"
+    CYAN = "\033[36m"
+    WHITE = "\033[37m"
 
     # Bright colors
-    BRIGHT_BLACK = '\033[90m'
-    BRIGHT_RED = '\033[91m'
-    BRIGHT_GREEN = '\033[92m'
-    BRIGHT_YELLOW = '\033[93m'
-    BRIGHT_BLUE = '\033[94m'
-    BRIGHT_MAGENTA = '\033[95m'
-    BRIGHT_CYAN = '\033[96m'
-    BRIGHT_WHITE = '\033[97m'
+    BRIGHT_BLACK = "\033[90m"
+    BRIGHT_RED = "\033[91m"
+    BRIGHT_GREEN = "\033[92m"
+    BRIGHT_YELLOW = "\033[93m"
+    BRIGHT_BLUE = "\033[94m"
+    BRIGHT_MAGENTA = "\033[95m"
+    BRIGHT_CYAN = "\033[96m"
+    BRIGHT_WHITE = "\033[97m"
 
     # Styles
-    BOLD = '\033[1m'
-    DIM = '\033[2m'
-    RESET = '\033[0m'
+    BOLD = "\033[1m"
+    DIM = "\033[2m"
+    RESET = "\033[0m"
 
 
 class ProgressReporter:
@@ -105,19 +105,20 @@ class ProgressReporter:
             return False
 
         # Check for NO_COLOR environment variable (standard)
-        if os.environ.get('NO_COLOR'):
+        if os.environ.get("NO_COLOR"):
             return False
 
         # Check TERM environment variable
-        term = os.environ.get('TERM', '')
-        if term == 'dumb':
+        term = os.environ.get("TERM", "")
+        if term == "dumb":
             return False
 
         # Windows special handling
-        if platform.system() == 'Windows':
+        if platform.system() == "Windows":
             # Windows 10+ supports ANSI colors
             try:
                 import ctypes
+
                 kernel32 = ctypes.windll.kernel32
                 # Enable ANSI escape sequence processing
                 kernel32.SetConsoleMode(kernel32.GetStdHandle(-11), 7)
@@ -270,7 +271,9 @@ class ProgressReporter:
         output = f"[{current}/{total}]{item_str}"
         print(self._colorize(output, Color.CYAN))
 
-    def summary_line(self, label: str, value: str, severity: Optional[str] = None) -> None:
+    def summary_line(
+        self, label: str, value: str, severity: Optional[str] = None
+    ) -> None:
         """
         Display a summary line with label and value.
 
@@ -328,17 +331,17 @@ def create_spinner(message: str = "Processing"):
             self.message = message
             self.spinning = False
             self.thread = None
-            self.frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
+            self.frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
             self.frame_index = 0
 
         def _spin(self):
             while self.spinning:
                 frame = self.frames[self.frame_index % len(self.frames)]
-                sys.stdout.write(f'\r{frame} {self.message}...')
+                sys.stdout.write(f"\r{frame} {self.message}...")
                 sys.stdout.flush()
                 self.frame_index += 1
                 time.sleep(0.1)
-            sys.stdout.write('\r' + ' ' * (len(self.message) + 10) + '\r')
+            sys.stdout.write("\r" + " " * (len(self.message) + 10) + "\r")
             sys.stdout.flush()
 
         def __enter__(self):
@@ -372,6 +375,7 @@ if __name__ == "__main__":
     # Test step progression
     reporter.start_step("Detecting operating system")
     import time
+
     time.sleep(0.5)
     reporter.complete_step("Detected Linux (Ubuntu 22.04)")
 

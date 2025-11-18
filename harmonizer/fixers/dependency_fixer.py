@@ -269,8 +269,7 @@ class DependencyFixer(BaseFixer):
         python_exe = self.get_python_executable()
 
         success, _, _ = run_command_safe(
-            [python_exe, "-m", "pip", "show", package_name],
-            timeout=10
+            [python_exe, "-m", "pip", "show", package_name], timeout=10
         )
         return success
 
@@ -303,8 +302,7 @@ class DependencyFixer(BaseFixer):
         installed = set()
 
         success, stdout, _ = run_command_safe(
-            [python_exe, "-m", "pip", "list", "--format=freeze"],
-            timeout=30
+            [python_exe, "-m", "pip", "list", "--format=freeze"], timeout=30
         )
 
         if success:

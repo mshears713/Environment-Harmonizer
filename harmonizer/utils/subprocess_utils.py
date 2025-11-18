@@ -31,7 +31,9 @@ from enum import Enum
 class SubprocessError(Exception):
     """Base exception for subprocess-related errors."""
 
-    def __init__(self, message: str, command: List[str], returncode: Optional[int] = None):
+    def __init__(
+        self, message: str, command: List[str], returncode: Optional[int] = None
+    ):
         super().__init__(message)
         self.command = command
         self.returncode = returncode
@@ -39,16 +41,19 @@ class SubprocessError(Exception):
 
 class CommandNotFoundError(SubprocessError):
     """Raised when the command executable is not found."""
+
     pass
 
 
 class CommandTimeoutError(SubprocessError):
     """Raised when the command times out."""
+
     pass
 
 
 class CommandFailedError(SubprocessError):
     """Raised when the command returns non-zero exit code."""
+
     pass
 
 
@@ -125,7 +130,7 @@ def run_command(
                 raise CommandFailedError(
                     f"Command failed with exit code {result.returncode}: {error_msg}",
                     command=command,
-                    returncode=result.returncode
+                    returncode=result.returncode,
                 )
 
             return result
@@ -133,33 +138,28 @@ def run_command(
         except FileNotFoundError as e:
             # Command not found - don't retry this
             raise CommandNotFoundError(
-                f"Command not found: {command[0]}",
-                command=command
+                f"Command not found: {command[0]}", command=command
             ) from e
 
         except subprocess.TimeoutExpired as e:
             last_exception = CommandTimeoutError(
-                f"Command timed out after {timeout} seconds",
-                command=command
+                f"Command timed out after {timeout} seconds", command=command
             )
 
         except PermissionError as e:
             # Permission denied - don't retry this
             raise SubprocessError(
-                f"Permission denied executing command: {command[0]}",
-                command=command
+                f"Permission denied executing command: {command[0]}", command=command
             ) from e
 
         except subprocess.SubprocessError as e:
             last_exception = SubprocessError(
-                f"Subprocess error: {str(e)}",
-                command=command
+                f"Subprocess error: {str(e)}", command=command
             )
 
         except Exception as e:
             last_exception = SubprocessError(
-                f"Unexpected error running command: {str(e)}",
-                command=command
+                f"Unexpected error running command: {str(e)}", command=command
             )
 
         # If we have more retries left, wait and try again
@@ -286,20 +286,16 @@ def check_command_exists(command: str, timeout: int = 2) -> bool:
 
     # Use platform-appropriate command
     import sys
+
     check_cmd = "where" if sys.platform == "win32" else "which"
 
-    success, _, _ = run_command_safe(
-        [check_cmd, command],
-        timeout=timeout
-    )
+    success, _, _ = run_command_safe([check_cmd, command], timeout=timeout)
 
     return success
 
 
 def get_command_version(
-    command: str,
-    version_arg: str = "--version",
-    timeout: int = 5
+    command: str, version_arg: str = "--version", timeout: int = 5
 ) -> Optional[str]:
     """
     Get the version of a command.
@@ -331,10 +327,7 @@ def get_command_version(
         Python 3.10.6
     """
 
-    success, stdout, stderr = run_command_safe(
-        [command, version_arg],
-        timeout=timeout
-    )
+    success, stdout, stderr = run_command_safe([command, version_arg], timeout=timeout)
 
     # Check both stdout and stderr (some commands print version to stderr)
     version_output = (stdout or stderr).strip()
@@ -466,7 +459,9 @@ if __name__ == "__main__":
     print("\nTest 5: Timeout handling")
     try:
         # Try to run a command with very short timeout
-        result = run_command(["python3", "-c", "import time; time.sleep(10)"], timeout=1)
+        result = run_command(
+            ["python3", "-c", "import time; time.sleep(10)"], timeout=1
+        )
         print(f"  Completed: {result.returncode}")
     except CommandTimeoutError as e:
         print(f"  Timed out (expected): {e}")

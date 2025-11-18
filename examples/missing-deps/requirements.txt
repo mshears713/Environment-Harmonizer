@@ -1,0 +1,13 @@
+# Project dependencies
+# Some of these may not be installed, demonstrating missing dependency detection
+
+# Standard library - always available
+# (no external packages needed for basic example)
+
+# For a real test with missing packages, uncomment these:
+# requests>=2.28.0
+# click>=8.0.0
+# colorama>=0.4.6
+
+# Note: To avoid actually requiring external packages in examples,
+# the harmonizer will detect if requirements.txt exists but is minimal

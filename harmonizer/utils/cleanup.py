@@ -26,7 +26,7 @@ import tempfile
 import atexit
 import signal
 from pathlib import Path
-from typing import List, Optional, Set
+from typing import Dict, List, Optional, Set
 import time
 
 from harmonizer.utils.logging_config import HarmonizerLogger
@@ -220,7 +220,9 @@ class CleanupManager:
 
                 # Check age if specified
                 if max_age_days is not None:
-                    file_age_days = (current_time - file_path.stat().st_mtime) / (24 * 3600)
+                    file_age_days = (current_time - file_path.stat().st_mtime) / (
+                        24 * 3600
+                    )
                     if file_age_days < max_age_days:
                         continue
 

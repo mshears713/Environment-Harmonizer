@@ -222,16 +222,12 @@ def parse_pyproject_toml(pyproject_file: Path) -> List[str]:
 
             # Pattern for Poetry: package = "^1.2.3" or package = { version = "^1.2.3" }
             poetry_deps = re.findall(
-                r'^\s*([a-zA-Z0-9_-]+)\s*=\s*["\'{]',
-                content,
-                re.MULTILINE
+                r'^\s*([a-zA-Z0-9_-]+)\s*=\s*["\'{]', content, re.MULTILINE
             )
 
             # Pattern for PEP 621: dependencies = ["package>=1.0", ...]
             pep621_match = re.search(
-                r'dependencies\s*=\s*\[(.*?)\]',
-                content,
-                re.DOTALL
+                r"dependencies\s*=\s*\[(.*?)\]", content, re.DOTALL
             )
 
             if pep621_match:
@@ -242,8 +238,22 @@ def parse_pyproject_toml(pyproject_file: Path) -> List[str]:
                 packages.extend(dep_packages)
             elif poetry_deps:
                 # Filter out common Poetry configuration keys
-                excluded = {'python', 'version', 'description', 'authors', 'readme', 'homepage', 'repository', 'documentation', 'keywords', 'classifiers', 'license'}
-                packages.extend([pkg for pkg in poetry_deps if pkg.lower() not in excluded])
+                excluded = {
+                    "python",
+                    "version",
+                    "description",
+                    "authors",
+                    "readme",
+                    "homepage",
+                    "repository",
+                    "documentation",
+                    "keywords",
+                    "classifiers",
+                    "license",
+                }
+                packages.extend(
+                    [pkg for pkg in poetry_deps if pkg.lower() not in excluded]
+                )
 
     except (FileNotFoundError, PermissionError, UnicodeDecodeError):
         pass
@@ -281,11 +291,7 @@ def parse_setup_py(setup_file: Path) -> List[str]:
             content = f.read()
 
             # Look for install_requires=[...]
-            match = re.search(
-                r'install_requires\s*=\s*\[(.*?)\]',
-                content,
-                re.DOTALL
-            )
+            match = re.search(r"install_requires\s*=\s*\[(.*?)\]", content, re.DOTALL)
 
             if match:
                 requires_str = match.group(1)
@@ -329,16 +335,14 @@ def parse_pipfile(pipfile: Path) -> List[str]:
             content = f.read()
 
             # Look for [packages] section
-            packages_match = re.search(
-                r'\[packages\](.*?)(?:\[|$)',
-                content,
-                re.DOTALL
-            )
+            packages_match = re.search(r"\[packages\](.*?)(?:\[|$)", content, re.DOTALL)
 
             if packages_match:
                 packages_str = packages_match.group(1)
                 # Extract package names (before = sign)
-                package_names = re.findall(r'^([a-zA-Z0-9_-]+)\s*=', packages_str, re.MULTILINE)
+                package_names = re.findall(
+                    r"^([a-zA-Z0-9_-]+)\s*=", packages_str, re.MULTILINE
+                )
                 packages.extend(package_names)
 
     except (FileNotFoundError, PermissionError, UnicodeDecodeError):
@@ -374,8 +378,7 @@ def get_installed_packages() -> List[str]:
 
     # Run pip list --format=freeze to get package names
     success, stdout, _ = run_command_safe(
-        [sys.executable, "-m", "pip", "list", "--format=freeze"],
-        timeout=10
+        [sys.executable, "-m", "pip", "list", "--format=freeze"], timeout=10
     )
 
     if success:
@@ -389,6 +392,7 @@ def get_installed_packages() -> List[str]:
         # If pip list fails, try using importlib.metadata (Python 3.8+)
         try:
             from importlib import metadata
+
             packages = [dist.name.lower() for dist in metadata.distributions()]
         except ImportError:
             # Fallback: return empty list
@@ -450,8 +454,7 @@ def check_package_installed(package_name: str) -> bool:
     """
 
     success, _, _ = run_command_safe(
-        [sys.executable, "-m", "pip", "show", package_name],
-        timeout=5
+        [sys.executable, "-m", "pip", "show", package_name], timeout=5
     )
     return success
 
@@ -473,8 +476,7 @@ def get_package_version(package_name: str) -> Optional[str]:
     """
 
     success, stdout, _ = run_command_safe(
-        [sys.executable, "-m", "pip", "show", package_name],
-        timeout=5
+        [sys.executable, "-m", "pip", "show", package_name], timeout=5
     )
 
     if success:
@@ -501,14 +503,14 @@ if __name__ == "__main__":
 
     print(f"\nRequirements File: {results['requirements_file']}")
     print(f"Required Packages: {len(results['required_packages'])}")
-    if results['required_packages']:
+    if results["required_packages"]:
         print(f"  {', '.join(results['required_packages'][:10])}")
-        if len(results['required_packages']) > 10:
+        if len(results["required_packages"]) > 10:
             print(f"  ... and {len(results['required_packages']) - 10} more")
 
     print(f"\nInstalled Packages: {len(results['installed_packages'])}")
     print(f"Missing Packages: {len(results['missing_packages'])}")
-    if results['missing_packages']:
+    if results["missing_packages"]:
         print(f"  {', '.join(results['missing_packages'])}")
 
     print("\n" + "=" * 60)

@@ -72,7 +72,7 @@ class TestProjectScanner(unittest.TestCase):
     def test_scan_with_specific_checks(self):
         """Test scanning with specific check filters."""
         scanner = ProjectScanner(str(self.test_project))
-        env_status = scanner.scan(checks=['os', 'python'])
+        env_status = scanner.scan(checks=["os", "python"])
 
         # Should have scanned these checks
         self.assertIsNotNone(env_status.os_type)
@@ -96,7 +96,7 @@ class TestCLIArgumentParsing(unittest.TestCase):
         parser = create_parser()
         args = parser.parse_args([])
 
-        self.assertEqual(args.project_path, '.')
+        self.assertEqual(args.project_path, ".")
         self.assertFalse(args.json)
         self.assertFalse(args.verbose)
         self.assertFalse(args.fix)
@@ -104,28 +104,28 @@ class TestCLIArgumentParsing(unittest.TestCase):
     def test_parser_with_project_path(self):
         """Test parser with explicit project path."""
         parser = create_parser()
-        args = parser.parse_args(['/path/to/project'])
+        args = parser.parse_args(["/path/to/project"])
 
-        self.assertEqual(args.project_path, '/path/to/project')
+        self.assertEqual(args.project_path, "/path/to/project")
 
     def test_parser_with_json_flag(self):
         """Test parser with JSON output flag."""
         parser = create_parser()
-        args = parser.parse_args(['--json'])
+        args = parser.parse_args(["--json"])
 
         self.assertTrue(args.json)
 
     def test_parser_with_verbose_flag(self):
         """Test parser with verbose flag."""
         parser = create_parser()
-        args = parser.parse_args(['-v'])
+        args = parser.parse_args(["-v"])
 
         self.assertTrue(args.verbose)
 
     def test_parser_with_fix_and_dry_run(self):
         """Test parser with fix and dry-run flags."""
         parser = create_parser()
-        args = parser.parse_args(['--fix', '--dry-run'])
+        args = parser.parse_args(["--fix", "--dry-run"])
 
         self.assertTrue(args.fix)
         self.assertTrue(args.dry_run)
@@ -133,9 +133,9 @@ class TestCLIArgumentParsing(unittest.TestCase):
     def test_parser_with_check_filters(self):
         """Test parser with specific check filters."""
         parser = create_parser()
-        args = parser.parse_args(['--check', 'os', '--check', 'python'])
+        args = parser.parse_args(["--check", "os", "--check", "python"])
 
-        self.assertEqual(args.check, ['os', 'python'])
+        self.assertEqual(args.check, ["os", "python"])
 
 
 class TestCLIValidation(unittest.TestCase):
@@ -163,7 +163,7 @@ class TestCLIValidation(unittest.TestCase):
     def test_validate_nonexistent_path(self):
         """Test validation with non-existent path."""
         parser = create_parser()
-        args = parser.parse_args(['/nonexistent/path/12345'])
+        args = parser.parse_args(["/nonexistent/path/12345"])
 
         with self.assertRaises(ValueError) as context:
             validate_arguments(args)
@@ -173,7 +173,7 @@ class TestCLIValidation(unittest.TestCase):
     def test_validate_dry_run_without_fix(self):
         """Test validation fails when dry-run without fix."""
         parser = create_parser()
-        args = parser.parse_args(['--dry-run'])
+        args = parser.parse_args(["--dry-run"])
 
         with self.assertRaises(ValueError) as context:
             validate_arguments(args)
@@ -183,7 +183,7 @@ class TestCLIValidation(unittest.TestCase):
     def test_validate_check_and_skip_together(self):
         """Test validation fails when both check and skip specified."""
         parser = create_parser()
-        args = parser.parse_args(['--check', 'os', '--skip', 'python'])
+        args = parser.parse_args(["--check", "os", "--skip", "python"])
 
         with self.assertRaises(ValueError) as context:
             validate_arguments(args)
@@ -233,7 +233,7 @@ class TestCLIScan(unittest.TestCase):
     def test_run_scan_verbose(self):
         """Test running scan in verbose mode."""
         parser = create_parser()
-        args = parser.parse_args([self.test_dir, '-v'])
+        args = parser.parse_args([self.test_dir, "-v"])
 
         # Should complete without errors
         env_status = run_scan(args)
@@ -279,7 +279,7 @@ class TestEnvironmentStatusModel(unittest.TestCase):
             severity=IssueSeverity.ERROR,
             category="test",
             message="Test error message",
-            fixable=False
+            fixable=False,
         )
 
         self.assertEqual(len(env.issues), 1)
@@ -308,7 +308,7 @@ class TestEnvironmentStatusModel(unittest.TestCase):
             severity=IssueSeverity.WARNING,
             category="test",
             message="Test warning",
-            fixable=False
+            fixable=False,
         )
         self.assertFalse(env.has_errors())
 
@@ -317,10 +317,10 @@ class TestEnvironmentStatusModel(unittest.TestCase):
             severity=IssueSeverity.ERROR,
             category="test",
             message="Test error",
-            fixable=False
+            fixable=False,
         )
         self.assertTrue(env.has_errors())
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

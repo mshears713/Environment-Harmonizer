@@ -429,7 +429,7 @@ if __name__ == "__main__":
     print(f"Current: {summary['current']['version']}")
     print(f"Required: {summary['required'] or 'Not specified'}")
     print(f"Compatible: {summary['compatible']}")
-    if summary['issue']:
+    if summary["issue"]:
         print(f"Issue: {summary['issue'].message}")
 
     print("\n" + "=" * 60)

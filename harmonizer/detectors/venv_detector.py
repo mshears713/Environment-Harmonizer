@@ -599,7 +599,9 @@ def verify_venv_integrity(venv_path: str) -> Dict[str, any]:
 
     # Test if pip works
     if results["python_works"]:
-        success, _, stderr = run_command_safe([python_exe, "-m", "pip", "--version"], timeout=5)
+        success, _, stderr = run_command_safe(
+            [python_exe, "-m", "pip", "--version"], timeout=5
+        )
 
         if success:
             results["pip_works"] = True
@@ -666,9 +668,7 @@ def verify_venv_active_subprocess() -> Dict[str, any]:
     return results
 
 
-def get_venv_activation_command(
-    venv_path: str, shell: str = "bash"
-) -> Optional[str]:
+def get_venv_activation_command(venv_path: str, shell: str = "bash") -> Optional[str]:
     """
     Get the command to activate a virtual environment.
 
