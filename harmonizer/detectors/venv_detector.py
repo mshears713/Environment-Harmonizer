@@ -26,6 +26,7 @@ from pathlib import Path
 from typing import Dict, Optional, Tuple
 
 from harmonizer.models import VenvType
+from harmonizer.utils.subprocess_utils import run_command_safe
 
 
 def detect_venv_type() -> Dict[str, any]:
@@ -164,18 +165,10 @@ def _detect_conda() -> Dict[str, any]:
         }
 
     # Check for conda installation (inactive)
-    try:
-        result = subprocess.run(
-            ["conda", "env", "list"],
-            capture_output=True,
-            text=True,
-            timeout=3,
-        )
-        if result.returncode == 0:
-            # Conda is installed but no environment is active
-            return {"detected": False, "active": False, "path": None, "name": None}
-    except (subprocess.SubprocessError, FileNotFoundError):
-        pass
+    success, _, _ = run_command_safe(["conda", "env", "list"], timeout=3)
+    if success:
+        # Conda is installed but no environment is active
+        return {"detected": False, "active": False, "path": None, "name": None}
 
     return {"detected": False, "active": False, "path": None, "name": None}
 
@@ -237,19 +230,11 @@ def _detect_pipx() -> Dict[str, any]:
                 }
 
     # Check if pipx is installed and has any packages
-    try:
-        result = subprocess.run(
-            ["pipx", "list"],
-            capture_output=True,
-            text=True,
-            timeout=3,
-        )
-        if result.returncode == 0 and result.stdout:
-            # Pipx is installed, but we're not in a pipx venv
-            # This is informational - not an active environment
-            return {"detected": False, "active": False, "path": None, "name": None}
-    except (subprocess.SubprocessError, FileNotFoundError):
-        pass
+    success, stdout, _ = run_command_safe(["pipx", "list"], timeout=3)
+    if success and stdout:
+        # Pipx is installed, but we're not in a pipx venv
+        # This is informational - not an active environment
+        return {"detected": False, "active": False, "path": None, "name": None}
 
     # Check standard pipx home directory
     if not pipx_home:
@@ -597,49 +582,32 @@ def verify_venv_integrity(venv_path: str) -> Dict[str, any]:
         return results
 
     # Test if Python runs
-    try:
-        result = subprocess.run(
-            [python_exe, "--version"],
-            capture_output=True,
-            text=True,
-            timeout=5,
-            check=False,
-        )
+    success, stdout, stderr = run_command_safe([python_exe, "--version"], timeout=5)
 
-        if result.returncode == 0:
-            results["python_works"] = True
-            # Parse version from output (e.g., "Python 3.10.6")
-            version_output = result.stdout.strip() or result.stderr.strip()
-            if "Python " in version_output:
-                results["python_version"] = version_output.replace("Python ", "").strip()
+    if success:
+        results["python_works"] = True
+        # Parse version from output (e.g., "Python 3.10.6")
+        version_output = stdout.strip() or stderr.strip()
+        if "Python " in version_output:
+            results["python_version"] = version_output.replace("Python ", "").strip()
+    else:
+        # Check if it was a timeout
+        if "timed out" in stderr.lower():
+            results["issues"].append("Python executable timed out")
         else:
             results["issues"].append("Python executable exists but fails to run")
 
-    except subprocess.TimeoutExpired:
-        results["issues"].append("Python executable timed out")
-    except Exception as e:
-        results["issues"].append(f"Error running Python: {str(e)}")
-
     # Test if pip works
     if results["python_works"]:
-        try:
-            result = subprocess.run(
-                [python_exe, "-m", "pip", "--version"],
-                capture_output=True,
-                text=True,
-                timeout=5,
-                check=False,
-            )
+        success, _, stderr = run_command_safe([python_exe, "-m", "pip", "--version"], timeout=5)
 
-            if result.returncode == 0:
-                results["pip_works"] = True
+        if success:
+            results["pip_works"] = True
+        else:
+            if "timed out" in stderr.lower():
+                results["issues"].append("pip check timed out")
             else:
                 results["issues"].append("pip is not available in venv")
-
-        except subprocess.TimeoutExpired:
-            results["issues"].append("pip check timed out")
-        except Exception as e:
-            results["issues"].append(f"Error checking pip: {str(e)}")
 
     # Overall validity
     results["valid"] = results["python_works"] and results["pip_works"]
@@ -678,28 +646,19 @@ def verify_venv_active_subprocess() -> Dict[str, any]:
     }
 
     # Find which python will be used
-    try:
-        # Use 'which' on Unix-like, 'where' on Windows
-        which_cmd = "which" if os.name != "nt" else "where"
+    # Use 'which' on Unix-like, 'where' on Windows
+    which_cmd = "which" if os.name != "nt" else "where"
+    python_cmd = "python3" if os.name != "nt" else "python"
 
-        result = subprocess.run(
-            [which_cmd, "python3" if os.name != "nt" else "python"],
-            capture_output=True,
-            text=True,
-            timeout=3,
-            check=False,
-        )
+    success, stdout, _ = run_command_safe([which_cmd, python_cmd], timeout=3)
 
-        if result.returncode == 0:
-            python_path = result.stdout.strip().split("\n")[0]  # First result
-            results["venv_python"] = python_path
+    if success:
+        python_path = stdout.strip().split("\n")[0]  # First result
+        results["venv_python"] = python_path
 
-            # Check if it's a venv Python (contains venv/bin or venv/Scripts)
-            if "venv" in python_path.lower() or "env" in python_path.lower():
-                results["active"] = True
-
-    except (subprocess.TimeoutExpired, FileNotFoundError, Exception):
-        pass
+        # Check if it's a venv Python (contains venv/bin or venv/Scripts)
+        if "venv" in python_path.lower() or "env" in python_path.lower():
+            results["active"] = True
 
     # Get system Python
     results["system_python"] = sys.base_prefix

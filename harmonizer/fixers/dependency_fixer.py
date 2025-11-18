@@ -33,6 +33,7 @@ import subprocess
 
 from harmonizer.fixers.base_fixer import BaseFixer, FixResult
 from harmonizer.models import EnvironmentStatus, IssueSeverity
+from harmonizer.utils.subprocess_utils import run_command_safe
 
 
 class DependencyFixer(BaseFixer):
@@ -267,17 +268,11 @@ class DependencyFixer(BaseFixer):
 
         python_exe = self.get_python_executable()
 
-        try:
-            result = subprocess.run(
-                [python_exe, "-m", "pip", "show", package_name],
-                capture_output=True,
-                text=True,
-                timeout=10,
-                check=False,
-            )
-            return result.returncode == 0
-        except (subprocess.SubprocessError, Exception):
-            return False
+        success, _, _ = run_command_safe(
+            [python_exe, "-m", "pip", "show", package_name],
+            timeout=10
+        )
+        return success
 
     def get_installed_packages(self) -> Set[str]:
         """
@@ -307,24 +302,17 @@ class DependencyFixer(BaseFixer):
         python_exe = self.get_python_executable()
         installed = set()
 
-        try:
-            result = subprocess.run(
-                [python_exe, "-m", "pip", "list", "--format=freeze"],
-                capture_output=True,
-                text=True,
-                timeout=30,
-                check=False,
-            )
+        success, stdout, _ = run_command_safe(
+            [python_exe, "-m", "pip", "list", "--format=freeze"],
+            timeout=30
+        )
 
-            if result.returncode == 0:
-                for line in result.stdout.splitlines():
-                    # Parse package==version format
-                    if "==" in line:
-                        package_name = line.split("==")[0].strip()
-                        installed.add(package_name.lower())
-
-        except (subprocess.SubprocessError, Exception):
-            pass
+        if success:
+            for line in stdout.splitlines():
+                # Parse package==version format
+                if "==" in line:
+                    package_name = line.split("==")[0].strip()
+                    installed.add(package_name.lower())
 
         return installed
 

@@ -30,6 +30,7 @@ import subprocess
 import sys
 
 from harmonizer.models import EnvironmentStatus, Issue, IssueSeverity
+from harmonizer.utils.subprocess_utils import run_command_safe
 
 
 class FixResult:
@@ -263,27 +264,19 @@ class BaseFixer(ABC):
         if self.verbose:
             print(f"  Running: {' '.join(command)}")
 
-        try:
-            result = subprocess.run(
-                command,
-                capture_output=True,
-                text=True,
-                timeout=300,  # 5 minute timeout
-                check=False,  # Don't raise on non-zero exit
-            )
+        # Use the improved subprocess utilities for better error handling
+        success, stdout, stderr = run_command_safe(
+            command,
+            timeout=300,  # 5 minute timeout
+            capture_output=True,
+            text=True
+        )
 
-            if result.returncode == 0:
-                return True, f"{description}: Success"
-            else:
-                error_msg = result.stderr.strip() if result.stderr else "Unknown error"
-                return False, f"{description}: Failed - {error_msg}"
-
-        except subprocess.TimeoutExpired:
-            return False, f"{description}: Timed out after 300 seconds"
-        except subprocess.SubprocessError as e:
-            return False, f"{description}: Subprocess error - {str(e)}"
-        except Exception as e:
-            return False, f"{description}: Unexpected error - {str(e)}"
+        if success:
+            return True, f"{description}: Success"
+        else:
+            error_msg = stderr.strip() if stderr else "Unknown error"
+            return False, f"{description}: Failed - {error_msg}"
 
     def _log(self, message: str, level: str = "INFO") -> None:
         """
